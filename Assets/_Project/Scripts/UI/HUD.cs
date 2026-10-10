@@ -1,0 +1,191 @@
+using HealingKnight.Core.Combat;
+using HealingKnight.Core.Flow;
+using HealingKnight.Gameplay.Level;
+using HealingKnight.Gameplay.Player;
+using TMPro;
+using UnityEngine;
+using UnityEngine.UI;
+
+namespace HealingKnight.UI
+{
+    /// <summary>
+    /// HUD del nivel: salud, energía del escudo, medicamento seleccionado, nombre del nivel
+    /// y mensajes breves (NODO, "¡AVANZA!", tutorial). Se construye solo al iniciar la escena.
+    /// </summary>
+    public class HUD : MonoBehaviour
+    {
+        private UIBar healthBar;
+        private UIBar shieldBar;
+        private TextMeshProUGUI medicationText;
+        private Image medicationSwatch;
+        private TextMeshProUGUI messageText;
+        private TextMeshProUGUI goText;
+        private TextMeshProUGUI levelText;
+        private TextMeshProUGUI controlsText;
+
+        private PlayerController player;
+        private float messageTimer;
+        private float goTimer;
+        private float controlsTimer = 12f;
+
+        private void Awake()
+        {
+            Build();
+        }
+
+        private void OnEnable()
+        {
+            PlayerController.Spawned += Bind;
+            GameplayEvents.Message += ShowMessage;
+            GameplayEvents.ArenaCleared += OnArenaCleared;
+            GameplayEvents.ArenaStarted += OnArenaStarted;
+            if (PlayerController.Current != null) Bind(PlayerController.Current);
+        }
+
+        private void OnDisable()
+        {
+            PlayerController.Spawned -= Bind;
+            GameplayEvents.Message -= ShowMessage;
+            GameplayEvents.ArenaCleared -= OnArenaCleared;
+            GameplayEvents.ArenaStarted -= OnArenaStarted;
+            Unbind();
+        }
+
+        private void Start()
+        {
+            var level = GameSession.CurrentLevel;
+            var system = GameSession.CurrentSystem;
+            levelText.text = level != null
+                ? $"{(system != null ? system.displayName.ToUpperInvariant() + "  ·  " : "")}{level.displayName}"
+                : "SANDBOX";
+        }
+
+        private void Build()
+        {
+            Canvas canvas = UIFactory.CreateCanvas("HUD Canvas", 10, transform);
+            Transform root = canvas.transform;
+
+            // Panel superior izquierdo
+            Image panel = UIFactory.Panel(root, "PlayerPanel", new Color(0f, 0f, 0f, 0.35f));
+            UIFactory.Place(panel.rectTransform, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(30f, -30f), new Vector2(560f, 170f));
+
+            TextMeshProUGUI name = UIFactory.Text(panel.transform, "HEALING KNIGHT", 30f, UIFactory.TextColor, TextAlignmentOptions.Left);
+            UIFactory.Place(name.rectTransform, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(20f, -10f), new Vector2(520f, 40f));
+
+            healthBar = UIFactory.Bar(panel.transform, "Health", new Color(0.9f, 0.2f, 0.3f), new Vector2(520f, 34f));
+            UIFactory.Place((RectTransform)healthBar.transform, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(20f, -55f), new Vector2(520f, 34f));
+
+            shieldBar = UIFactory.Bar(panel.transform, "Shield", UIFactory.AccentColor, new Vector2(360f, 18f));
+            UIFactory.Place((RectTransform)shieldBar.transform, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(20f, -95f), new Vector2(360f, 18f));
+
+            medicationSwatch = UIFactory.Panel(panel.transform, "MedicationSwatch", Color.white);
+            UIFactory.Place(medicationSwatch.rectTransform, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(20f, -122f), new Vector2(34f, 34f));
+
+            medicationText = UIFactory.Text(panel.transform, "", 28f, UIFactory.TextColor, TextAlignmentOptions.Left);
+            UIFactory.Place(medicationText.rectTransform, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(66f, -120f), new Vector2(470f, 40f));
+
+            // Nombre del nivel (arriba al centro)
+            levelText = UIFactory.Text(root, "", 30f, new Color(1f, 1f, 1f, 0.85f));
+            UIFactory.Place(levelText.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -30f), new Vector2(900f, 50f));
+
+            // Mensajes (centro)
+            messageText = UIFactory.Text(root, "", 46f, UIFactory.TextColor);
+            UIFactory.Place(messageText.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 260f), new Vector2(1400f, 160f));
+            // "¡AVANZA! →"
+            goText = UIFactory.Text(root, "¡AVANZA!  →", 64f, new Color(1f, 0.85f, 0.2f), TextAlignmentOptions.Right);
+            UIFactory.Place(goText.rectTransform, new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(-60f, 120f), new Vector2(700f, 100f));
+            goText.gameObject.SetActive(false);
+
+            // Controles (abajo, desaparece solo)
+            controlsText = UIFactory.Text(root,
+                "Mover WASD · Saltar Espacio · Disparar J · Escudo K · Golpe L · Medicamento Q/E o 1-5 · Pausa Esc",
+                24f, new Color(1f, 1f, 1f, 0.7f));
+            UIFactory.Place(controlsText.rectTransform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 25f), new Vector2(1800f, 40f));
+        }
+
+        private void Bind(PlayerController p)
+        {
+            Unbind();
+            player = p;
+            if (player == null) return;
+
+            player.Health.HealthChanged += OnHealthChanged;
+            if (player.Shield != null) player.Shield.EnergyChanged += OnShieldChanged;
+            if (player.Shooter != null) player.Shooter.MedicationChanged += OnMedicationChanged;
+
+            healthBar.SetValue(player.Health.Health01, true);
+            if (player.Shield != null) shieldBar.SetValue(player.Shield.Energy01, true);
+            if (player.Shooter != null) OnMedicationChanged(player.Shooter.Current);
+        }
+
+        private void Unbind()
+        {
+            if (player == null) return;
+            player.Health.HealthChanged -= OnHealthChanged;
+            if (player.Shield != null) player.Shield.EnergyChanged -= OnShieldChanged;
+            if (player.Shooter != null) player.Shooter.MedicationChanged -= OnMedicationChanged;
+            player = null;
+        }
+
+        private void OnHealthChanged(float current, float max) => healthBar.SetValue(max > 0f ? current / max : 0f);
+
+        private void OnShieldChanged(float value01) => shieldBar.SetValue(value01);
+
+        private void OnMedicationChanged(MedicationData med)
+        {
+            if (med == null)
+            {
+                medicationText.text = "Sin medicamentos (revisa PlayerConfig)";
+                medicationSwatch.color = Color.gray;
+                return;
+            }
+
+            int index = player != null && player.Shooter != null ? player.Shooter.SelectedIndex + 1 : 0;
+            medicationText.text = $"[{index}] {med.displayName}{(med.isRegional ? "  (regional)" : "")}";
+            medicationSwatch.color = med.color;
+        }
+
+        private void ShowMessage(string text)
+        {
+            messageText.text = text;
+            messageText.alpha = 1f;
+            messageTimer = 3f;
+        }
+
+        private void OnArenaStarted(ArenaZone arena)
+        {
+            goText.gameObject.SetActive(false);
+        }
+
+        private void OnArenaCleared(ArenaZone arena)
+        {
+            goText.gameObject.SetActive(true);
+            goTimer = 3f;
+        }
+
+        private void Update()
+        {
+            float dt = Time.unscaledDeltaTime;
+
+            if (messageTimer > 0f)
+            {
+                messageTimer -= dt;
+                if (messageTimer < 0.6f) messageText.alpha = Mathf.Clamp01(messageTimer / 0.6f);
+            }
+
+            if (goTimer > 0f)
+            {
+                goTimer -= dt;
+                float blink = Mathf.PingPong(Time.unscaledTime * 3f, 1f);
+                goText.alpha = 0.4f + 0.6f * blink;
+                if (goTimer <= 0f) goText.gameObject.SetActive(false);
+            }
+
+            if (controlsTimer > 0f)
+            {
+                controlsTimer -= dt;
+                if (controlsTimer < 1f) controlsText.alpha = Mathf.Clamp01(controlsTimer);
+            }
+        }
+    }
+}
