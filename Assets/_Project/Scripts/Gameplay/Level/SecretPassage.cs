@@ -7,13 +7,13 @@ namespace HealingKnight.Gameplay.Level
     /// <summary>
     /// Pasaje secreto escondido en un nivel. Al tocarlo se registra el secreto en el guardado
     /// y aparece en el mapa el nivel oculto que lo usa (LevelData.secretId).
-    /// Escóndelo en una esquina del fondo, detrás de algo, o en un tramo que no sea obvio.
+    /// Escóndelo en una plataforma alta, detrás de algo, o en un tramo que no sea obvio.
     /// </summary>
     public class SecretPassage : MonoBehaviour
     {
         [SerializeField] private string secretId = "digestivo_boca";
         [SerializeField, TextArea] private string foundMessage = "¡Pasaje secreto! Nuevo nivel en el mapa del cuerpo.";
-        [SerializeField] private float radius = 0.7f;
+        [SerializeField] private float radius = 1f;
         [SerializeField] private SpriteRenderer glow;
 
         private bool found;
@@ -39,7 +39,7 @@ namespace HealingKnight.Gameplay.Level
             PlayerController player = PlayerController.Current;
             if (player == null) return;
 
-            if (Vector2.Distance(player.Body.GroundPosition, transform.position) <= radius)
+            if (Vector2.Distance(player.Motor.Center, transform.position) <= radius)
                 SetFound(GameSession.FindSecret(secretId));
         }
 

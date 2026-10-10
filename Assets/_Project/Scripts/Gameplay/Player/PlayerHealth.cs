@@ -79,8 +79,8 @@ namespace HealingKnight.Gameplay.Player
                 return new HitResult { outcome = HitOutcome.Damaged, effectiveness = Effectiveness.Effective, damageDealt = info.amount };
             }
 
-            float dir = controller.Body.GroundPosition.x >= info.sourcePosition.x ? 1f : -1f;
-            controller.OnHurt(dir, Mathf.Max(info.knockback, 3f));
+            float dir = controller.Position.x >= info.sourcePosition.x ? 1f : -1f;
+            controller.OnHurt(dir, Mathf.Max(info.knockback, controller.Config.hurtKnockback));
 
             invulnerableUntil = Time.time + controller.Config.invulnerabilityTime;
             StartBlink(controller.Config.invulnerabilityTime);

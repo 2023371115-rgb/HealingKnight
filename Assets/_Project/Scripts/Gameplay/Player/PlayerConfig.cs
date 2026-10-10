@@ -5,67 +5,72 @@ using UnityEngine;
 namespace HealingKnight.Gameplay.Player
 {
     /// <summary>
-    /// Todos los valores de balance de Healing Knight en un asset.
+    /// Todos los valores de balance de Healing Knight en un asset (estilo Metal Slug).
     /// Se ajustan desde el Inspector, incluso en Play Mode, sin tocar código.
     /// </summary>
     [CreateAssetMenu(menuName = "Healing Knight/Configuración del jugador", fileName = "PlayerConfig")]
     public class PlayerConfig : ScriptableObject
     {
-        [Header("Movimiento en el piso")]
-        [Tooltip("Velocidad máxima horizontal (u/s).")]
-        public float moveSpeed = 5.5f;
-        [Tooltip("La profundidad se recorre más lento que lo horizontal, como en los beat 'em up.")]
-        [Range(0.3f, 1f)] public float depthSpeedFactor = 0.65f;
-        public float acceleration = 45f;
-        public float deceleration = 60f;
+        [Header("Movimiento (Metal Slug: velocidad constante, sin inercia)")]
+        public float runSpeed = 5f;
+        [Tooltip("Velocidad al avanzar agachado.")]
+        public float crouchSpeed = 1.8f;
+        [Tooltip("Control en el aire (0 a 1).")]
+        [Range(0f, 1f)] public float airControl = 0.9f;
 
-        [Header("Salto (esquivar y atacar desde el aire)")]
-        public float jumpHeight = 1.6f;
-        public float timeToApex = 0.32f;
-        [Tooltip("La caída es más rápida que la subida.")]
-        public float fallGravityMultiplier = 1.5f;
-        [Tooltip("Control horizontal en el aire (0 a 1).")]
-        [Range(0f, 1f)] public float airControl = 0.8f;
+        [Header("Salto (altura fija)")]
+        public float jumpHeight = 2.6f;
+        public float timeToApex = 0.38f;
+
+        [Header("Agacharse")]
+        [Tooltip("Alto del cuerpo agachado respecto al normal.")]
+        [Range(0.3f, 1f)] public float crouchHeightFactor = 0.55f;
+        public float standingColliderHeight = 1.8f;
 
         [Header("Salud")]
         public float maxHealth = 100f;
-        public float invulnerabilityTime = 1.0f;
-        public float hurtStunTime = 0.25f;
-        public float knockbackDecay = 18f;
+        public float invulnerabilityTime = 1.2f;
+        public float hurtStunTime = 0.2f;
+        public float hurtKnockback = 4f;
+        [Tooltip("Daño por caer al vacío.")]
+        public float fallDamage = 20f;
 
         [Header("Disparo de cápsulas")]
         [Tooltip("Segundos entre disparos al mantener el botón.")]
-        public float fireInterval = 0.25f;
-        public float capsuleSpeed = 12f;
-        public float capsuleRange = 10f;
+        public float fireInterval = 0.18f;
+        public float capsuleSpeed = 16f;
+        public float capsuleRange = 12f;
         public float capsuleDamage = 10f;
         public float capsuleKnockback = 1.5f;
-        [Tooltip("Altura de la boca del cañón sobre los pies.")]
-        public float muzzleHeight = 1.0f;
+        public int maxActiveCapsules = 8;
+        [Tooltip("Altura de la boca del cañón (de pie / agachado).")]
+        public float muzzleHeight = 0.85f;
+        public float crouchMuzzleHeight = 0.5f;
         public float muzzleForward = 0.7f;
-        public int maxActiveCapsules = 6;
-        [Tooltip("Qué tan lejos en profundidad puede estar el enemigo y aun así recibir la cápsula.")]
-        public float capsuleLaneTolerance = 0.35f;
 
-        [Header("Golpe cercano")]
-        public float meleeDamage = 6f;
-        public float meleeRange = 1.1f;
-        public float meleeLaneTolerance = 0.45f;
-        public float meleeWindup = 0.08f;
-        public float meleeActiveTime = 0.1f;
-        public float meleeCooldown = 0.4f;
-        public float meleeKnockback = 4f;
+        [Header("Cuchillazo automático (al disparar con un enemigo pegado)")]
+        public float meleeDamage = 14f;
+        public float meleeReach = 1.1f;
+        public float meleeCooldown = 0.3f;
+        public float meleeKnockback = 5f;
 
-        [Header("Escudo (GDD 5.8)")]
+        [Header("Bomba de medicamento (granada)")]
+        public int bombsPerLevel = 10;
+        public float bombDamage = 30f;
+        public float bombBlastRadius = 1.8f;
+        public Vector2 bombThrowVelocity = new Vector2(7f, 9f);
+        public float bombCooldown = 0.4f;
+
+        [Header("Escudo burbuja (GDD 5.8)")]
         public float shieldMaxEnergy = 100f;
         public float shieldProjectileCost = 20f;
         public float shieldContactCost = 30f;
         public float shieldRegenDelay = 1.5f;
         public float shieldRegenPerSecond = 15f;
         public float shieldBreakCooldown = 2.5f;
-        [Range(0.1f, 1f)] public float shieldMoveSpeedMultiplier = 0.5f;
+        [Range(0f, 1f)] public float shieldMoveSpeedMultiplier = 0.4f;
         [Tooltip("Ángulo que cubre el escudo hacia donde miras. 360 = bloquea por todos lados.")]
-        [Range(30f, 360f)] public float shieldArcDegrees = 120f;
+        [Range(30f, 360f)] public float shieldArcDegrees = 160f;
         [Tooltip("Parry: si el golpe llega en estos primeros segundos después de levantar el escudo, no gasta energía y recarga el disparo.")]
         public float parryWindow = 0.2f;
 

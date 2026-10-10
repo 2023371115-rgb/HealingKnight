@@ -3,6 +3,14 @@ using UnityEngine;
 
 namespace HealingKnight.Gameplay.Enemies
 {
+    public enum EnemyMovement
+    {
+        /// <summary>Camina por el suelo y las plataformas (con gravedad).</summary>
+        Ground,
+        /// <summary>Flota en el aire (virus): no le afecta la gravedad.</summary>
+        Flying
+    }
+
     public enum EnemyAttackType
     {
         /// <summary>Se acerca y embiste (parásitos, bacterias).</summary>
@@ -30,21 +38,22 @@ namespace HealingKnight.Gameplay.Enemies
         public float hurtStunTime = 0.2f;
 
         [Header("Movimiento")]
+        public EnemyMovement movement = EnemyMovement.Ground;
         public float moveSpeed = 2.2f;
-        [Range(0.3f, 1f)] public float depthSpeedFactor = 0.7f;
+        [Tooltip("Solo voladores: altura sobre el jugador a la que intenta flotar.")]
+        public float flyHeight = 2.2f;
         [Tooltip("A qué distancia empieza a perseguirte.")]
         public float aggroRange = 14f;
 
         [Header("Ataque")]
         public EnemyAttackType attackType = EnemyAttackType.Melee;
-        [Tooltip("Melee: distancia a la que embiste. Ranged: distancia que intenta mantener.")]
+        [Tooltip("Cuerpo a cuerpo: distancia a la que embiste. A distancia: distancia que intenta mantener.")]
         public float attackDistance = 1.2f;
         [Tooltip("Aviso antes de atacar (se ilumina). Es lo que hace justo al combate.")]
         public float attackWindup = 0.45f;
         public float attackCooldown = 1.4f;
         public float attackDamage = 10f;
         public float attackKnockback = 4f;
-        public float laneTolerance = 0.4f;
 
         [Header("Solo a distancia")]
         public float projectileSpeed = 7f;

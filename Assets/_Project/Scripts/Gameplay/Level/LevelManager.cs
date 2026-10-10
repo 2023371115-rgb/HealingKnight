@@ -15,12 +15,12 @@ namespace HealingKnight.Gameplay.Level
     /// </summary>
     public class LevelManager : MonoBehaviour
     {
-        [Header("Piso caminable (X = largo del nivel, Y = profundidad)")]
-        [SerializeField] private Rect levelBounds = new Rect(-10f, -3.2f, 60f, 2.6f);
+        [Header("Límites del nivel (X = largo; yMin = caída al vacío)")]
+        [SerializeField] private Rect levelBounds = new Rect(-10f, -6f, 60f, 20f);
 
         [Header("Jugador")]
         [SerializeField] private PlayerController playerPrefab;
-        [SerializeField] private Vector2 spawnPoint = new Vector2(-7f, -1.9f);
+        [SerializeField] private Vector2 spawnPoint = new Vector2(-7f, 0.1f);
         [SerializeField] private float respawnDelay = 1.5f;
 
         [Header("Salida")]
@@ -73,7 +73,7 @@ namespace HealingKnight.Gameplay.Level
                 return;
             }
 
-            player.Body.Teleport(spawnPoint);
+            player.Motor.Teleport(spawnPoint);
             player.Health.Died += OnPlayerDied;
             foreach (ArenaZone a in arenas) a.Cleared += OnArenaCleared;
 
@@ -83,7 +83,7 @@ namespace HealingKnight.Gameplay.Level
         private void Update()
         {
             if (completed || player == null || !player.Health.IsAlive) return;
-            if (player.Body.GroundPosition.x < exitX) return;
+            if (player.Position.x < exitX) return;
 
             foreach (ArenaZone a in arenas)
             {
@@ -118,16 +118,15 @@ namespace HealingKnight.Gameplay.Level
                 }
             }
 
-            float depth = (levelBounds.yMin + levelBounds.yMax) * 0.5f;
-            // Reaparece un poco antes de la arena para que esta vuelva a activarse al avanzar.
-            player.Respawn(new Vector2(respawnX - 1f, depth));
+            // Reaparece cayendo desde arriba, un poco antes de la arena para que esta vuelva a activarse al avanzar.
+            player.Respawn(new Vector2(respawnX - 1f, spawnPoint.y + 3f));
         }
 
         private IEnumerator CompleteLevel()
         {
             completed = true;
             player.Input.Blocked = true;
-            player.Body.SetGroundVelocity(Vector2.zero);
+            player.Motor.SetHorizontalVelocity(0f);
             GameplayEvents.RaiseLevelCompleted();
             if (!string.IsNullOrEmpty(completeMessage)) GameplayEvents.RaiseMessage(completeMessage);
 
@@ -152,7 +151,7 @@ namespace HealingKnight.Gameplay.Level
             Gizmos.color = Color.cyan;
             Gizmos.DrawWireSphere(new Vector3(spawnPoint.x, spawnPoint.y, 0f), 0.3f);
             Gizmos.color = Color.green;
-            Gizmos.DrawLine(new Vector3(exitX, levelBounds.yMin, 0f), new Vector3(exitX, levelBounds.yMax + 3f, 0f));
+            Gizmos.DrawLine(new Vector3(exitX, levelBounds.yMin, 0f), new Vector3(exitX, levelBounds.yMin + 10f, 0f));
         }
     }
 }

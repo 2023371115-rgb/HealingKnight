@@ -3,13 +3,13 @@ using UnityEngine;
 namespace HealingKnight.Gameplay.Movement
 {
     /// <summary>
-    /// Zona del piso donde se puede caminar. X = izquierda/derecha, Y = profundidad.
-    /// El nivel define los límites totales; una arena activa los estrecha en X
-    /// (la cámara se "bloquea" y no puedes avanzar hasta derrotar la oleada).
+    /// Límites horizontales del nivel y, cuando hay una arena activa, de la arena
+    /// (la pantalla se "cierra" y no puedes avanzar hasta derrotar las oleadas, como en Metal Slug).
+    /// También guarda la altura mínima: caer por debajo cuenta como caída al vacío.
     /// </summary>
     public static class WalkableArea
     {
-        private static Rect levelBounds = new Rect(-1000f, -3f, 2000f, 3f);
+        private static Rect levelBounds = new Rect(-1000f, -50f, 2000f, 100f);
         private static bool hasLock;
         private static float lockMinX;
         private static float lockMaxX;
@@ -19,13 +19,14 @@ namespace HealingKnight.Gameplay.Movement
 
         public static float MinX => hasLock ? Mathf.Max(lockMinX, levelBounds.xMin) : levelBounds.xMin;
         public static float MaxX => hasLock ? Mathf.Min(lockMaxX, levelBounds.xMax) : levelBounds.xMax;
-        public static float MinY => levelBounds.yMin;
-        public static float MaxY => levelBounds.yMax;
+
+        /// <summary>Por debajo de esta Y se considera caída al vacío.</summary>
+        public static float KillY => levelBounds.yMin;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetStatics()
         {
-            levelBounds = new Rect(-1000f, -3f, 2000f, 3f);
+            levelBounds = new Rect(-1000f, -50f, 2000f, 100f);
             hasLock = false;
         }
 
@@ -45,18 +46,6 @@ namespace HealingKnight.Gameplay.Movement
         public static void Unlock()
         {
             hasLock = false;
-        }
-
-        public static Vector2 Clamp(Vector2 groundPosition, float margin = 0.3f)
-        {
-            groundPosition.x = Mathf.Clamp(groundPosition.x, MinX + margin, MaxX - margin);
-            groundPosition.y = Mathf.Clamp(groundPosition.y, MinY, MaxY);
-            return groundPosition;
-        }
-
-        public static Vector2 RandomPointInDepth(float x)
-        {
-            return new Vector2(x, Random.Range(MinY + 0.2f, MaxY - 0.2f));
         }
     }
 }

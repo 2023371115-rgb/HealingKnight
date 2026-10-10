@@ -9,29 +9,26 @@ namespace HealingKnight.Gameplay.Combat
     /// <summary>Parámetros de un disparo.</summary>
     public struct ProjectileShot
     {
-        public Vector2 origin;          // punto del piso de donde sale
-        public float height;            // altura a la que viaja
-        public int direction;           // -1 izquierda, 1 derecha
+        public Vector2 origin;
+        public Vector2 direction;       // normalizada (8 direcciones para el jugador)
         public float speed;
         public float range;
         public float damage;
         public float knockback;
-        public float laneTolerance;
-        public float halfWidth;
+        public float radius;
         public Team sourceTeam;
         public Team targetTeam;
         public MedicationData medication; // null en proyectiles enemigos
         public Color color;
+        public LayerMask groundMask;     // se destruye al tocar el escenario
     }
 
     /// <summary>
-    /// Cápsula de medicamento o proyectil enemigo. Viaja en línea recta por su franja de profundidad.
+    /// Cápsula de medicamento o proyectil enemigo: viaja en línea recta en la dirección del disparo.
     /// Si el medicamento es ineficaz, rebota en gris (GDD 5.7). Lo administra un pool.
-    /// Estructura: Projectile (raíz en el piso) └── Visual (SpriteRenderer a la altura del disparo).
     /// </summary>
     public class Projectile : MonoBehaviour
     {
-        [SerializeField] private Transform visual;
         [SerializeField] private SpriteRenderer spriteRenderer;
 
         [Header("Rebote (medicamento ineficaz)")]
@@ -43,6 +40,7 @@ namespace HealingKnight.Gameplay.Combat
         private float travelled;
         private bool bouncing;
         private float bounceTimer;
+        private Vector2 bounceVelocity;
         private Action<Projectile> onFinished;
         private bool finished;
 
@@ -54,16 +52,11 @@ namespace HealingKnight.Gameplay.Combat
             onFinished = finishedCallback;
             travelled = 0f;
             bouncing = false;
-            bounceTimer = 0f;
             finished = false;
 
             transform.position = new Vector3(data.origin.x, data.origin.y, 0f);
-            if (visual != null)
-            {
-                visual.localPosition = new Vector3(0f, data.height, 0f);
-                Vector3 s = visual.localScale;
-                visual.localScale = new Vector3(Mathf.Abs(s.x) * (data.direction >= 0 ? 1f : -1f), s.y, s.z);
-            }
+            float angle = Mathf.Atan2(data.direction.y, data.direction.x) * Mathf.Rad2Deg;
+            transform.rotation = Quaternion.Euler(0f, 0f, angle);
 
             if (spriteRenderer != null)
             {
@@ -81,8 +74,9 @@ namespace HealingKnight.Gameplay.Combat
             if (bouncing)
             {
                 bounceTimer += dt;
-                transform.position += new Vector3(-shot.direction * shot.speed * bounceSpeedFactor * dt, 0f, 0f);
-                if (visual != null) visual.localPosition += new Vector3(0f, 2f * dt, 0f);
+                bounceVelocity += Vector2.down * 12f * dt;
+                transform.position += (Vector3)(bounceVelocity * dt);
+                transform.Rotate(0f, 0f, 720f * dt);
                 if (spriteRenderer != null)
                 {
                     Color c = bounceColor;
@@ -94,17 +88,15 @@ namespace HealingKnight.Gameplay.Combat
             }
 
             float step = shot.speed * dt;
-            transform.position += new Vector3(shot.direction * step, 0f, 0f);
+            Vector2 previous = transform.position;
+            Vector2 next = previous + shot.direction * step;
+            transform.position = next;
             travelled += step;
 
-            Vector2 ground = transform.position;
-            Hurtbox target = Hurtbox.QueryFirst(shot.targetTeam, ground, shot.halfWidth, shot.height, shot.laneTolerance,
-                ground.x - shot.direction * shot.halfWidth);
-
+            Hurtbox target = Hurtbox.FirstInCircle(shot.targetTeam, next, shot.radius);
             if (target != null)
             {
-                DamageInfo info = DamageInfo.Create(shot.damage, DamageKind.Projectile, shot.sourceTeam,
-                    ground - new Vector2(shot.direction * 0.5f, 0f));
+                DamageInfo info = DamageInfo.Create(shot.damage, DamageKind.Projectile, shot.sourceTeam, previous);
                 info.knockback = shot.knockback;
                 info.medication = shot.medication;
 
@@ -116,7 +108,14 @@ namespace HealingKnight.Gameplay.Combat
                 return;
             }
 
-            bool outOfLevel = ground.x < WalkableArea.LevelBounds.xMin - 2f || ground.x > WalkableArea.LevelBounds.xMax + 2f;
+            if (shot.groundMask.value != 0 && Physics2D.OverlapCircle(next, shot.radius * 0.6f, shot.groundMask) != null)
+            {
+                Finish();
+                return;
+            }
+
+            Rect b = WalkableArea.LevelBounds;
+            bool outOfLevel = next.x < b.xMin - 2f || next.x > b.xMax + 2f || next.y < b.yMin - 2f || next.y > b.yMax + 10f;
             if (travelled >= shot.range || outOfLevel) Finish();
         }
 
@@ -124,6 +123,7 @@ namespace HealingKnight.Gameplay.Combat
         {
             bouncing = true;
             bounceTimer = 0f;
+            bounceVelocity = (-shot.direction + Vector2.up * 0.8f) * shot.speed * bounceSpeedFactor;
         }
 
         private void Finish()

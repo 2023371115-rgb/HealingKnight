@@ -146,11 +146,10 @@ namespace HealingKnight.Gameplay.Player
         {
             if (arcDegrees >= 359f) return true;
 
-            Vector2 toSource = sourcePosition - controller.Body.GroundPosition;
+            Vector2 toSource = sourcePosition - controller.Motor.Center;
             if (toSource.sqrMagnitude < 0.0001f) return true;
 
-            // Solo importa el lado horizontal y algo de profundidad: el arco se mide en el plano del piso.
-            Vector2 facing = new Vector2(controller.Body.Facing, 0f);
+            Vector2 facing = new Vector2(controller.Motor.Facing, 0f);
             return Vector2.Angle(facing, toSource) <= arcDegrees * 0.5f;
         }
     }

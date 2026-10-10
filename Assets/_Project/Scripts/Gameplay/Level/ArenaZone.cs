@@ -30,7 +30,7 @@ namespace HealingKnight.Gameplay.Level
     /// <summary>
     /// Arena de combate: cuando el jugador llega a 'triggerX' la cámara se bloquea entre 'leftBound' y 'rightBound',
     /// aparecen las oleadas en orden y, al derrotarlas todas, se desbloquea ("¡AVANZA!").
-    /// Es el corazón de la estructura de un beat 'em up.
+    /// Igual que las pantallas que se cierran en Metal Slug.
     /// </summary>
     public class ArenaZone : MonoBehaviour
     {
@@ -39,6 +39,8 @@ namespace HealingKnight.Gameplay.Level
         public float triggerX = 0f;
         public float leftBound = -8f;
         public float rightBound = 8f;
+        [Tooltip("Y del piso de la arena (donde caen los enemigos de suelo).")]
+        public float floorY = 0f;
 
         [Header("Oleadas")]
         public List<Wave> waves = new List<Wave>();
@@ -66,7 +68,7 @@ namespace HealingKnight.Gameplay.Level
 
             if (status == Status.Waiting)
             {
-                if (player != null && player.Body.GroundPosition.x >= triggerX) Begin();
+                if (player != null && player.Position.x >= triggerX) Begin();
                 return;
             }
 
@@ -106,7 +108,14 @@ namespace HealingKnight.Gameplay.Level
                 {
                     bool fromRight = entry.side == SpawnSide.Right || (entry.side == SpawnSide.Both && n % 2 == 0);
                     float x = fromRight ? rightBound - 0.8f - (i % 3) * 0.6f : leftBound + 0.8f + (i % 3) * 0.6f;
-                    Vector2 pos = WalkableArea.RandomPointInDepth(x);
+                    // Los de suelo caen desde arriba de la pantalla (como en Metal Slug); los voladores entran flotando.
+                    // Los jefes (sin motor de física) salen directo del piso.
+                    bool flying = entry.data != null && entry.data.movement == EnemyMovement.Flying;
+                    bool walker = entry.prefab.GetComponent<CharacterMotor2D>() != null;
+                    float y = flying ? floorY + entry.data.flyHeight + 1f + (i % 2) * 0.6f
+                        : walker ? floorY + 3f + (i % 3) * 0.8f
+                        : floorY;
+                    Vector2 pos = new Vector2(x, y);
 
                     EnemyHealth enemy = Instantiate(entry.prefab, new Vector3(pos.x, pos.y, 0f), Quaternion.identity);
                     if (entry.data != null)
@@ -150,9 +159,8 @@ namespace HealingKnight.Gameplay.Level
 
         private void OnDrawGizmos()
         {
-            Rect b = WalkableArea.LevelBounds;
-            float yMin = b.height < 100f ? b.yMin : -3f;
-            float yMax = b.height < 100f ? b.yMax : 0f;
+            float yMin = floorY - 1f;
+            float yMax = floorY + 4f;
 
             Gizmos.color = new Color(1f, 0.4f, 0.2f, 0.8f);
             Gizmos.DrawLine(new Vector3(leftBound, yMin, 0f), new Vector3(leftBound, yMax + 4f, 0f));

@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using HealingKnight.Core.Damage;
-using HealingKnight.Core.Depth;
 using HealingKnight.Gameplay.Combat;
 using HealingKnight.Gameplay.Level;
 using HealingKnight.Gameplay.Movement;
@@ -10,16 +9,17 @@ using UnityEngine;
 namespace HealingKnight.Gameplay.Enemies
 {
     /// <summary>
-    /// Jefe lombriz (versión 2.5D del jefe del prototipo).
-    /// Ciclo: bajo tierra → aviso (montículo que tiembla en tu franja) → ataque → expuesta → bajo tierra.
+    /// Jefe lombriz en vista lateral (estilo jefe de Metal Slug).
+    /// Ciclo: bajo tierra → aviso (montículo que tiembla) → ataque → expuesta → bajo tierra.
     /// Ataques:
-    ///  - Embestida: cruza la arena a ras de piso por tu franja. Se esquiva cambiando de profundidad.
-    ///  - Arco: sale del suelo, salta en arco por tu franja y vuelve a entrar.
-    /// Solo recibe daño mientras está fuera. Fases por vida: más rápida y, desde la fase 2, invoca parásitos.
+    ///  - Embestida: sale de un lado y cruza la arena a ras de piso. Se esquiva SALTANDO (o con la burbuja).
+    ///  - Arco: salta del suelo en un arco alto sobre ti y vuelve a entrar. Se esquiva corriendo.
+    /// Solo recibe daño mientras la cabeza está fuera. Fases por vida: más rápida y, desde la fase 2, invoca parásitos.
     /// Huida: si 'fleeAtHealth01' > 0, al llegar a ese % de vida se escapa (Intestino delgado) en lugar de morir.
-    /// El cuerpo son segmentos que siguen el rastro de la cabeza.
+    /// La raíz del objeto ES la cabeza; el cuerpo son segmentos que siguen su rastro.
+    /// El suelo es la Y donde se coloca al empezar.
     /// </summary>
-    [RequireComponent(typeof(DepthBody), typeof(EnemyHealth))]
+    [RequireComponent(typeof(EnemyHealth))]
     public class LombrizBoss : MonoBehaviour
     {
         private enum State { Intro, Underground, Telegraph, Moving, Exposed, Fleeing, Dead }
@@ -35,6 +35,8 @@ namespace HealingKnight.Gameplay.Enemies
         [SerializeField, TextArea] private string fleeMessage = "NODO: ¡Escapa! Síguela.";
 
         [Header("Cuerpo")]
+        [Tooltip("Sprites de la cabeza (se voltean y giran con el movimiento).")]
+        [SerializeField] private Transform visual;
         [SerializeField] private Transform segmentsRoot;
         [SerializeField] private Sprite segmentSprite;
         [SerializeField] private Color segmentColor = new Color(0.95f, 0.6f, 0.6f);
@@ -49,19 +51,21 @@ namespace HealingKnight.Gameplay.Enemies
         [SerializeField] private float telegraphTime = 1.0f;
         [SerializeField] private float exposedTime = 1.6f;
 
-        [Header("Embestida")]
+        [Header("Embestida (se salta)")]
         [SerializeField] private float lungeSpeed = 9f;
-        [SerializeField] private float lungeHeight = 0.6f;
+        [Tooltip("Altura del centro de la cabeza sobre el piso durante la embestida.")]
+        [SerializeField] private float lungeHeight = 0.5f;
+        [Tooltip("En la embestida solo dañan la cabeza y estos primeros segmentos (la cola va pegada al piso).")]
+        [SerializeField] private int lungeHarmfulSegments = 4;
 
-        [Header("Arco")]
+        [Header("Arco (se esquiva corriendo)")]
         [SerializeField] private float arcWidth = 7f;
-        [SerializeField] private float arcHeight = 3.5f;
+        [SerializeField] private float arcHeight = 4f;
         [SerializeField] private float arcDuration = 1.3f;
 
         [Header("Daño")]
         [SerializeField] private float contactDamage = 20f;
         [SerializeField] private float contactKnockback = 7f;
-        [SerializeField] private float laneTolerance = 0.5f;
 
         [Header("Fases (por % de vida)")]
         [SerializeField] private float phase2At = 0.6f;
@@ -73,28 +77,30 @@ namespace HealingKnight.Gameplay.Enemies
         [SerializeField] private int minionsPerSummon = 2;
         [SerializeField] private int maxMinionsAlive = 3;
 
-        private const float BelowGround = -1.2f;
+        private const float BelowGround = -1.4f;
 
-        private DepthBody body;
         private EnemyHealth health;
         private Hurtbox hurtbox;
 
         private State state = State.Intro;
         private Attack attack;
         private float timer;
-        private float laneY;
+        private float floorY;
+        private float height;            // altura de la cabeza respecto al piso
         private float startX, endX;
         private int direction = 1;
-        private float progress;          // 0..1 del recorrido, sigue un poco más para enterrar la cola
+        private float progress;          // 0..1 del recorrido; sigue un poco más para enterrar la cola
         private float pathDuration;
         private bool hitThisAttack;
         private int chainedLunges;
+        private Vector2 lastHeadPosition;
 
-        private readonly List<Vector3> trail = new List<Vector3>(); // (x, profundidad, altura)
+        private readonly List<Vector2> trail = new List<Vector2>();
         private SpriteRenderer[] headRenderers;
         private Transform[] segments;
         private SpriteRenderer[] segmentRenderers;
         private readonly List<EnemyHealth> minions = new List<EnemyHealth>();
+        private Vector3 visualBaseScale = Vector3.one;
 
         private int Phase
         {
@@ -108,26 +114,23 @@ namespace HealingKnight.Gameplay.Enemies
         }
 
         private float SpeedMultiplier => Phase == 3 ? 1.5f : Phase == 2 ? 1.25f : 1f;
+        private Vector2 Head => transform.position;
 
         private void Awake()
         {
-            body = GetComponent<DepthBody>();
             health = GetComponent<EnemyHealth>();
             hurtbox = GetComponent<Hurtbox>();
-            body.SetKinematicHeight(true);
-            headRenderers = body.Visual != null ? body.Visual.GetComponentsInChildren<SpriteRenderer>(true) : new SpriteRenderer[0];
+            if (visual != null)
+            {
+                headRenderers = visual.GetComponentsInChildren<SpriteRenderer>(true);
+                visualBaseScale = new Vector3(Mathf.Abs(visual.localScale.x), visual.localScale.y, visual.localScale.z);
+            }
+            else headRenderers = new SpriteRenderer[0];
             BuildSegments();
         }
 
-        private void OnEnable()
-        {
-            health.Died += OnDied;
-        }
-
-        private void OnDisable()
-        {
-            health.Died -= OnDied;
-        }
+        private void OnEnable() => health.Died += OnDied;
+        private void OnDisable() => health.Died -= OnDied;
 
         private void OnDestroy()
         {
@@ -138,10 +141,10 @@ namespace HealingKnight.Gameplay.Enemies
 
         private void Start()
         {
+            floorY = transform.position.y;
             health.HealthFloor01 = fleeAtHealth01;
             SetExposed(false);
-            body.SetHeight(BelowGround);
-            laneY = body.GroundPosition.y;
+            SetHeadPosition(transform.position.x, BelowGround);
             if (moundRenderer != null) moundRenderer.enabled = false;
 
             GameplayEvents.RaiseBossStarted(bossName, health);
@@ -182,7 +185,8 @@ namespace HealingKnight.Gameplay.Enemies
 
                 case State.Exposed:
                     timer -= dt;
-                    body.SetHeight(0.35f + Mathf.Sin(Time.time * 6f) * 0.1f);
+                    // Asomada y "aturdida": se balancea, momento para castigarla.
+                    SetHeadPosition(transform.position.x, 0.9f + Mathf.Sin(Time.time * 6f) * 0.12f);
                     RecordTrail();
                     if (timer <= 0f) Burrow();
                     break;
@@ -194,8 +198,7 @@ namespace HealingKnight.Gameplay.Enemies
         private void BeginTelegraph()
         {
             PlayerController player = PlayerController.Current;
-            float playerX = player != null ? player.Body.GroundPosition.x : (WalkableArea.MinX + WalkableArea.MaxX) * 0.5f;
-            laneY = player != null ? player.Body.GroundPosition.y : body.GroundPosition.y;
+            float playerX = player != null ? player.Position.x : (WalkableArea.MinX + WalkableArea.MaxX) * 0.5f;
 
             float minX = WalkableArea.MinX + 0.6f;
             float maxX = WalkableArea.MaxX - 0.6f;
@@ -221,17 +224,18 @@ namespace HealingKnight.Gameplay.Enemies
             }
             else
             {
-                direction = Random.value < 0.5f ? 1 : -1;
-                startX = Mathf.Clamp(playerX - direction * arcWidth * 0.5f, minX, maxX);
-                endX = Mathf.Clamp(playerX + direction * arcWidth * 0.5f, minX, maxX);
-                if (Mathf.Abs(endX - startX) < 2f) endX = Mathf.Clamp(startX + (startX < (minX + maxX) * 0.5f ? arcWidth : -arcWidth), minX, maxX);
+                // Salta en arco pasando justo por encima del jugador.
+                int side = Random.value < 0.5f ? 1 : -1;
+                startX = Mathf.Clamp(playerX - side * arcWidth * 0.5f, minX, maxX);
+                endX = Mathf.Clamp(playerX + side * arcWidth * 0.5f, minX, maxX);
+                if (Mathf.Abs(endX - startX) < 2f)
+                    endX = Mathf.Clamp(startX + (startX < (minX + maxX) * 0.5f ? arcWidth : -arcWidth), minX, maxX);
                 pathDuration = arcDuration / SpeedMultiplier;
             }
 
             direction = endX >= startX ? 1 : -1;
-            body.Teleport(new Vector2(startX, laneY));
-            body.SetHeight(BelowGround);
-            body.SetFacing(direction);
+            SetHeadPosition(startX, BelowGround);
+            Face(direction);
             trail.Clear();
 
             state = State.Telegraph;
@@ -248,32 +252,33 @@ namespace HealingKnight.Gameplay.Enemies
 
         private void UpdateMove(float dt)
         {
+            bool flat = attack == Attack.Lunge || state == State.Fleeing;
+
             // Avanza más allá de 1 para que la cola termine de entrar al suelo.
-            float tailTime = segmentCount * segmentSpacing / Mathf.Max(1f, Mathf.Abs(endX - startX) / Mathf.Max(0.01f, pathDuration));
-            float extra = tailTime / Mathf.Max(0.01f, pathDuration);
+            float speed = Mathf.Max(1f, Mathf.Abs(endX - startX) / Mathf.Max(0.01f, pathDuration));
+            float extra = segmentCount * segmentSpacing / speed / Mathf.Max(0.01f, pathDuration);
             progress += dt / Mathf.Max(0.01f, pathDuration);
 
             float t = progress;
             float x = Mathf.LerpUnclamped(startX, endX, t);
-            float peak = attack == Attack.Lunge || state == State.Fleeing ? lungeHeight : arcHeight;
-            float h = t <= 1f
-                ? (peak - BelowGround) * Mathf.Sin(Mathf.PI * Mathf.Clamp01(t)) + BelowGround
-                : BelowGround - (t - 1f) * 3f;
+            float peak = flat ? lungeHeight : arcHeight;
+            float h;
+            if (t > 1f) h = BelowGround - (t - 1f) * 3f;
+            else if (flat)
+            {
+                // Sale rápido, cruza a ras de piso y se vuelve a meter al final.
+                float rise = Mathf.Clamp01(Mathf.Min(t, 1f - t) / 0.1f);
+                h = Mathf.Lerp(BelowGround, peak, Mathf.Sin(rise * Mathf.PI * 0.5f)) + Mathf.Sin(Time.time * 10f) * 0.06f;
+            }
+            else h = (peak - BelowGround) * Mathf.Sin(Mathf.PI * Mathf.Clamp01(t)) + BelowGround;
 
-            // En la embestida va casi a ras de piso: solo se hunde al principio y al final.
-            if ((attack == Attack.Lunge || state == State.Fleeing) && t > 0.12f && t < 0.88f) h = peak + Mathf.Sin(Time.time * 10f) * 0.08f;
+            if (state != State.Fleeing) x = Mathf.Clamp(x, WalkableArea.MinX - 3f, WalkableArea.MaxX + 3f);
 
-            bool clampBefore = state != State.Fleeing;
-            if (clampBefore) x = Mathf.Clamp(x, WalkableArea.MinX - 3f, WalkableArea.MaxX + 3f);
-
-            transform.position = new Vector3(x, laneY, transform.position.z);
-            body.SetHeight(h);
+            SetHeadPosition(x, h);
             RecordTrail();
 
-            bool headOut = h > -0.2f;
-            SetExposed(headOut && state == State.Moving);
-
-            if (state == State.Moving && !hitThisAttack) TryHitPlayer();
+            SetExposed(h > -0.2f && state == State.Moving);
+            if (state == State.Moving && !hitThisAttack) TryHitPlayer(flat);
 
             if (progress >= 1f + extra)
             {
@@ -294,11 +299,11 @@ namespace HealingKnight.Gameplay.Enemies
 
         private void EmergeExposed()
         {
-            // Asoma la cabeza al final de la embestida, "aturdida": momento para castigarla.
             state = State.Exposed;
             timer = exposedTime;
-            transform.position = new Vector3(Mathf.Clamp(endX, WalkableArea.MinX + 0.6f, WalkableArea.MaxX - 0.6f), laneY, transform.position.z);
-            body.SetFacing(-direction);
+            SetHeadPosition(Mathf.Clamp(endX, WalkableArea.MinX + 0.6f, WalkableArea.MaxX - 0.6f), 0.9f);
+            Face(-direction);
+            if (visual != null) visual.localRotation = Quaternion.identity;
             trail.Clear();
             SetExposed(true);
         }
@@ -306,14 +311,39 @@ namespace HealingKnight.Gameplay.Enemies
         private void Burrow()
         {
             SetExposed(false);
-            body.SetHeight(BelowGround);
+            SetHeadPosition(transform.position.x, BelowGround);
             state = State.Underground;
             timer = undergroundTime / SpeedMultiplier;
         }
 
+        private void SetHeadPosition(float x, float h)
+        {
+            height = h;
+            Vector2 previous = lastHeadPosition;
+            transform.position = new Vector3(x, floorY + h, transform.position.z);
+            lastHeadPosition = transform.position;
+
+            // La cabeza mira hacia donde se mueve (sube y baja en el arco).
+            if (visual != null && (state == State.Moving || state == State.Fleeing))
+            {
+                Vector2 delta = lastHeadPosition - previous;
+                if (delta.sqrMagnitude > 0.0001f)
+                {
+                    float angle = Mathf.Atan2(delta.y, Mathf.Abs(delta.x)) * Mathf.Rad2Deg;
+                    visual.localRotation = Quaternion.Euler(0f, 0f, angle * direction);
+                }
+            }
+        }
+
+        private void Face(int dir)
+        {
+            if (visual == null || dir == 0) return;
+            visual.localScale = new Vector3(visualBaseScale.x * dir, visualBaseScale.y, visualBaseScale.z);
+        }
+
         // ---------------------------------------------------------------- daño
 
-        private void TryHitPlayer()
+        private void TryHitPlayer(bool flat)
         {
             PlayerController player = PlayerController.Current;
             if (player == null || !player.Health.IsAlive) return;
@@ -321,27 +351,23 @@ namespace HealingKnight.Gameplay.Enemies
             Hurtbox target = player.GetComponent<Hurtbox>();
             if (target == null) return;
 
-            // Cabeza
-            if (CheckHit(target, new Vector2(transform.position.x, laneY), body.Height, headSize * 0.45f)) return;
+            if (height > -0.3f && CheckHit(target, Head, headSize * 0.45f)) return;
 
-            // Cuerpo
-            for (int i = 0; i < segments.Length; i++)
+            int harmful = flat ? Mathf.Min(lungeHarmfulSegments, segments.Length) : segments.Length;
+            for (int i = 0; i < harmful; i++)
             {
                 if (!segmentRenderers[i].enabled) continue;
-                Vector3 p = segments[i].position;
-                float segHeight = p.y - laneY;
-                float r = segments[i].localScale.x * 0.45f;
-                if (CheckHit(target, new Vector2(p.x, laneY), segHeight, r)) return;
+                Vector2 p = segments[i].position;
+                if (p.y < floorY - 0.3f) continue;
+                if (CheckHit(target, p, segments[i].localScale.x * 0.45f)) return;
             }
         }
 
-        private bool CheckHit(Hurtbox target, Vector2 ground, float height, float radius)
+        private bool CheckHit(Hurtbox target, Vector2 center, float radius)
         {
-            if (height < -0.3f) return false;
-            float attackHeight = Mathf.Max(0f, height) + radius * 0.5f;
-            if (!target.IsHitBy(ground, radius, attackHeight, laneTolerance)) return false;
+            if (!target.OverlapsCircle(center, radius)) return false;
 
-            DamageInfo info = DamageInfo.Create(contactDamage, DamageKind.Contact, Team.Enemy, ground);
+            DamageInfo info = DamageInfo.Create(contactDamage, DamageKind.Contact, Team.Enemy, center);
             info.knockback = contactKnockback;
             target.Damageable.ApplyDamage(info);
             hitThisAttack = true;
@@ -368,7 +394,7 @@ namespace HealingKnight.Gameplay.Enemies
             startX = transform.position.x;
             endX = WalkableArea.MaxX + 6f;
             direction = 1;
-            body.SetFacing(1);
+            Face(1);
             pathDuration = Mathf.Abs(endX - startX) / (lungeSpeed * 1.4f);
             progress = 0.15f;
         }
@@ -405,8 +431,8 @@ namespace HealingKnight.Gameplay.Enemies
             int toSpawn = Mathf.Min(minionsPerSummon, maxMinionsAlive - minions.Count);
             for (int i = 0; i < toSpawn; i++)
             {
-                Vector2 pos = WalkableArea.RandomPointInDepth(transform.position.x + Random.Range(-1.5f, 1.5f));
-                EnemyHealth m = Instantiate(minionPrefab, new Vector3(pos.x, pos.y, 0f), Quaternion.identity);
+                float x = Mathf.Clamp(transform.position.x + Random.Range(-1.5f, 1.5f), WalkableArea.MinX + 0.5f, WalkableArea.MaxX - 0.5f);
+                EnemyHealth m = Instantiate(minionPrefab, new Vector3(x, floorY + 0.3f, 0f), Quaternion.identity);
                 if (minionData != null)
                 {
                     m.Configure(minionData, null);
@@ -451,7 +477,7 @@ namespace HealingKnight.Gameplay.Enemies
 
         private void RecordTrail()
         {
-            Vector3 head = new Vector3(transform.position.x, laneY, body.Height);
+            Vector2 head = Head;
             if (trail.Count == 0 || (head - trail[0]).sqrMagnitude > 0.0004f) trail.Insert(0, head);
 
             int max = segmentCount * 12 + 20;
@@ -462,8 +488,10 @@ namespace HealingKnight.Gameplay.Enemies
         {
             if (segments == null) return;
 
+            bool hidden = state == State.Underground || state == State.Telegraph || state == State.Intro;
+
             // La cabeza solo se ve cuando está fuera del suelo.
-            bool headVisible = body.Height > -0.25f && state != State.Underground && state != State.Telegraph && state != State.Intro;
+            bool headVisible = height > -0.25f && !hidden;
             for (int i = 0; i < headRenderers.Length; i++)
                 if (headRenderers[i] != null) headRenderers[i].enabled = headVisible;
 
@@ -471,34 +499,33 @@ namespace HealingKnight.Gameplay.Enemies
             float walked = 0f;
             for (int i = 0; i < segments.Length; i++)
             {
-                float targetDistance = (i + 1) * segmentSpacing;
-                Vector3 point;
-                bool found = TrailPointAt(targetDistance, ref index, ref walked, out point);
+                Vector2 point;
+                bool found = TrailPointAt((i + 1) * segmentSpacing, ref index, ref walked, out point);
 
-                bool visible = found && point.z > -0.25f && state != State.Underground && state != State.Telegraph && state != State.Intro;
+                bool visible = found && point.y > floorY - 0.25f && !hidden;
                 segmentRenderers[i].enabled = visible;
                 if (!found) continue;
 
                 // Ondulación ligera para que se vea orgánica.
                 float wave = Mathf.Sin(Time.time * 8f - i * 0.7f) * 0.06f;
-                segments[i].position = new Vector3(point.x, point.y + Mathf.Max(point.z, -2f) + wave, transform.position.z);
+                segments[i].position = new Vector3(point.x, point.y + wave, transform.position.z);
             }
         }
 
-        private bool TrailPointAt(float distance, ref int index, ref float walked, out Vector3 point)
+        private bool TrailPointAt(float distance, ref int index, ref float walked, out Vector2 point)
         {
-            point = Vector3.zero;
+            point = Vector2.zero;
             if (trail.Count < 2) return false;
 
             while (index < trail.Count - 1)
             {
-                Vector3 a = trail[index];
-                Vector3 b = trail[index + 1];
-                float seg = Mathf.Sqrt((a.x - b.x) * (a.x - b.x) + (a.z - b.z) * (a.z - b.z));
+                Vector2 a = trail[index];
+                Vector2 b = trail[index + 1];
+                float seg = Vector2.Distance(a, b);
                 if (walked + seg >= distance)
                 {
                     float k = seg > 0.0001f ? (distance - walked) / seg : 0f;
-                    point = new Vector3(Mathf.Lerp(a.x, b.x, k), a.y, Mathf.Lerp(a.z, b.z, k));
+                    point = Vector2.Lerp(a, b, k);
                     return true;
                 }
                 walked += seg;
@@ -513,9 +540,9 @@ namespace HealingKnight.Gameplay.Enemies
             moundRenderer.enabled = show;
             if (!show) return;
 
-            // Montículo que tiembla: el aviso de por dónde va a salir.
+            // Montículo que tiembla en el piso: el aviso de por dónde va a salir.
             float shake = Mathf.Sin(Time.time * 40f) * 0.05f;
-            moundRenderer.transform.localPosition = new Vector3(shake, 0f, 0f);
+            moundRenderer.transform.position = new Vector3(transform.position.x + shake, floorY, moundRenderer.transform.position.z);
         }
     }
 }

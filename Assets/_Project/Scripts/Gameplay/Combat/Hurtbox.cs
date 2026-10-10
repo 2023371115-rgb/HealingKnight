@@ -1,45 +1,42 @@
 using System.Collections.Generic;
+using HealingKnight.Core.Combat2D;
 using HealingKnight.Core.Damage;
-using HealingKnight.Core.Depth;
-using HealingKnight.Gameplay.Movement;
 using UnityEngine;
 
 namespace HealingKnight.Gameplay.Combat
 {
     /// <summary>
-    /// Zona donde se puede golpear a un personaje. Se registra en una lista global para que
-    /// cápsulas y golpes encuentren objetivos sin usar la física de Unity (que no entiende la profundidad).
-    /// Debe estar en el mismo GameObject que el componente que implementa IDamageable.
+    /// Zona donde se puede golpear a un personaje (rectángulo relativo a su posición, que son los pies).
+    /// Se registra en una lista global para que disparos, cuchillazos y explosiones encuentren objetivos
+    /// sin depender de capas de física. Debe estar junto al componente que implementa IDamageable.
     /// </summary>
-    [RequireComponent(typeof(DepthBody))]
     public class Hurtbox : MonoBehaviour
     {
         private static readonly List<Hurtbox> all = new List<Hurtbox>();
         public static IReadOnlyList<Hurtbox> All => all;
 
-        [Tooltip("Medio ancho del cuerpo en unidades.")]
-        [SerializeField] private float halfWidth = 0.4f;
+        [Tooltip("Centro del rectángulo respecto a los pies.")]
+        [SerializeField] private Vector2 offset = new Vector2(0f, 0.9f);
+        [SerializeField] private Vector2 size = new Vector2(0.8f, 1.8f);
 
-        [Tooltip("Alto del cuerpo desde los pies.")]
-        [SerializeField] private float bodyHeight = 1.8f;
-
-        private DepthBody body;
         private IDamageable damageable;
+        private Vector2 baseOffset;
+        private Vector2 baseSize;
 
-        public DepthBody Body => body;
         public IDamageable Damageable => damageable;
-        public float HalfWidth => halfWidth;
-        public float BodyHeight => bodyHeight;
         public Team Team => damageable != null ? damageable.Team : Team.Neutral;
         public bool IsAlive => damageable != null && damageable.IsAlive;
+        public Rect WorldRect => HitMath.FromCenter((Vector2)transform.position + offset, size);
+        public Vector2 Center => (Vector2)transform.position + offset;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetStatics() => all.Clear();
 
         private void Awake()
         {
-            body = GetComponent<DepthBody>();
             damageable = GetComponent<IDamageable>();
+            baseOffset = offset;
+            baseSize = size;
             if (damageable == null)
                 Debug.LogError($"[Hurtbox] {name} no tiene un componente IDamageable.", this);
         }
@@ -47,55 +44,54 @@ namespace HealingKnight.Gameplay.Combat
         private void OnEnable() => all.Add(this);
         private void OnDisable() => all.Remove(this);
 
-        public bool IsHitBy(Vector2 attackCenter, float attackHalfWidth, float attackHeight, float laneTolerance)
+        /// <summary>Agacharse: el cuerpo se hace más bajo (los disparos altos pasan por encima).</summary>
+        public void SetHeightFactor(float factor)
         {
-            return DepthMath.Overlaps(
-                attackCenter, attackHalfWidth, attackHeight,
-                body.GroundPosition, halfWidth, body.Height, bodyHeight,
-                laneTolerance);
+            size = new Vector2(baseSize.x, baseSize.y * factor);
+            offset = new Vector2(baseOffset.x, size.y * 0.5f + (baseOffset.y - baseSize.y * 0.5f));
         }
 
-        /// <summary>Busca objetivos vivos de un equipo que toquen la zona de ataque.</summary>
-        public static void Query(Team targetTeam, Vector2 attackCenter, float attackHalfWidth, float attackHeight,
-            float laneTolerance, List<Hurtbox> results)
+        /// <summary>Para enemigos que se mueven por script (jefe): coloca el rectángulo en otra parte.</summary>
+        public void SetOffset(Vector2 newOffset) => offset = newOffset;
+
+        public bool OverlapsCircle(Vector2 center, float radius) => HitMath.CircleOverlapsRect(center, radius, WorldRect);
+        public bool OverlapsRect(Rect rect) => HitMath.RectsOverlap(rect, WorldRect);
+
+        public static void QueryCircle(Team targetTeam, Vector2 center, float radius, List<Hurtbox> results)
         {
             results.Clear();
             for (int i = 0; i < all.Count; i++)
             {
                 Hurtbox h = all[i];
-                if (h == null || h.Team != targetTeam || !h.IsAlive) continue;
-                if (h.IsHitBy(attackCenter, attackHalfWidth, attackHeight, laneTolerance)) results.Add(h);
+                if (h != null && h.Team == targetTeam && h.IsAlive && h.OverlapsCircle(center, radius)) results.Add(h);
             }
         }
 
-        /// <summary>El primer objetivo tocado (el más cercano a 'fromX').</summary>
-        public static Hurtbox QueryFirst(Team targetTeam, Vector2 attackCenter, float attackHalfWidth, float attackHeight,
-            float laneTolerance, float fromX)
+        public static void QueryRect(Team targetTeam, Rect rect, List<Hurtbox> results)
         {
-            Hurtbox best = null;
-            float bestDistance = float.MaxValue;
+            results.Clear();
             for (int i = 0; i < all.Count; i++)
             {
                 Hurtbox h = all[i];
-                if (h == null || h.Team != targetTeam || !h.IsAlive) continue;
-                if (!h.IsHitBy(attackCenter, attackHalfWidth, attackHeight, laneTolerance)) continue;
-
-                float d = Mathf.Abs(h.body.GroundPosition.x - fromX);
-                if (d < bestDistance)
-                {
-                    bestDistance = d;
-                    best = h;
-                }
+                if (h != null && h.Team == targetTeam && h.IsAlive && h.OverlapsRect(rect)) results.Add(h);
             }
-            return best;
+        }
+
+        public static Hurtbox FirstInCircle(Team targetTeam, Vector2 center, float radius)
+        {
+            for (int i = 0; i < all.Count; i++)
+            {
+                Hurtbox h = all[i];
+                if (h != null && h.Team == targetTeam && h.IsAlive && h.OverlapsCircle(center, radius)) return h;
+            }
+            return null;
         }
 
         private void OnDrawGizmosSelected()
         {
-            Vector3 p = transform.position;
-            float h = Application.isPlaying && body != null ? body.Height : 0f;
+            Rect r = WorldRect;
             Gizmos.color = Color.yellow;
-            Gizmos.DrawWireCube(p + new Vector3(0f, h + bodyHeight * 0.5f, 0f), new Vector3(halfWidth * 2f, bodyHeight, 0f));
+            Gizmos.DrawWireCube(r.center, new Vector3(r.width, r.height, 0f));
         }
     }
 }

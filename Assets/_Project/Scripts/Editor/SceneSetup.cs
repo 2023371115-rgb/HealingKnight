@@ -3,6 +3,7 @@ using System.IO;
 using HealingKnight.Gameplay.CameraSystem;
 using HealingKnight.Gameplay.Enemies;
 using HealingKnight.Gameplay.Level;
+using HealingKnight.Gameplay.Movement;
 using HealingKnight.UI;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -93,7 +94,7 @@ namespace HealingKnight.EditorTools
         {
             var go = new GameObject("Main Camera");
             go.tag = "MainCamera";
-            go.transform.position = new Vector3(0f, 1.6f, -10f);
+            go.transform.position = new Vector3(0f, 2.5f, -10f);
             var cam = go.AddComponent<Camera>();
             cam.orthographic = true;
             cam.orthographicSize = 5.4f;
@@ -136,43 +137,61 @@ namespace HealingKnight.EditorTools
             public Color background, wall, floor, floorEdge, blob;
         }
 
-        private LevelManager BuildLevelBase(float length, LevelStyle style, string intro)
+        private const float FloorY = 0f;   // la parte de arriba del piso
+        private LevelStyle currentStyle;
+        private Transform environment;
+
+        /// <summary>
+        /// Nivel base en vista lateral: pared de fondo, piso sólido (capa Ground) con huecos opcionales,
+        /// jugador, HUD y LevelManager. 'pits' = huecos en el piso (x = inicio, y = ancho): caer cuesta vida.
+        /// </summary>
+        private LevelManager BuildLevelBase(float length, LevelStyle style, string intro, params Vector2[] pits)
         {
             CreateCamera(style.background, true);
+            currentStyle = style;
 
-            const float floorMinY = -3.4f;
-            const float floorMaxY = -0.6f;
             float startX = -10f;
+            float endX = startX + length;
 
-            // Escenario placeholder: pared del fondo, piso y unas manchas orgánicas.
-            var env = new GameObject("Environment").transform;
-            SetupUtils.SpriteChild(env, "BackWall", PlaceholderArt.Square, style.wall,
-                new Vector3(startX + length * 0.5f, floorMaxY, 0f), new Vector2(length + 30f, 9f), -200);
-            SetupUtils.SpriteChild(env, "Floor", PlaceholderArt.Square, style.floor,
-                new Vector3(startX + length * 0.5f, floorMinY - 1.2f, 0f), new Vector2(length + 30f, floorMaxY - floorMinY + 1.2f), -100);
-            SetupUtils.SpriteChild(env, "FloorEdge", PlaceholderArt.Square, style.floorEdge,
-                new Vector3(startX + length * 0.5f, floorMaxY - 0.1f, 0f), new Vector2(length + 30f, 0.2f), -99);
+            environment = new GameObject("Environment").transform;
+            SetupUtils.SpriteChild(environment, "BackWall", PlaceholderArt.Square, style.wall,
+                new Vector3(startX + length * 0.5f, FloorY, 0f), new Vector2(length + 30f, 10f), -200);
+
+            // Piso por tramos (los huecos quedan entre tramos).
+            var sorted = new List<Vector2>(pits ?? new Vector2[0]);
+            sorted.Sort((a, b) => a.x.CompareTo(b.x));
+            float segmentStart = startX - 15f;
+            int index = 0;
+            foreach (Vector2 pit in sorted)
+            {
+                FloorSegment($"Floor_{index++}", segmentStart, pit.x);
+                segmentStart = pit.x + pit.y;
+            }
+            FloorSegment($"Floor_{index}", segmentStart, endX + 15f);
 
             var random = new System.Random(length.GetHashCode());
-            for (float x = startX - 5f; x < startX + length + 10f; x += 4f + (float)random.NextDouble() * 3f)
+            for (float x = startX - 5f; x < endX + 10f; x += 4f + (float)random.NextDouble() * 3f)
             {
                 float size = 1f + (float)random.NextDouble() * 2.5f;
-                float y = 1.5f + (float)random.NextDouble() * 4f;
-                SetupUtils.SpriteChild(env, "Blob", PlaceholderArt.Circle, style.blob,
+                float y = FloorY + 2.5f + (float)random.NextDouble() * 5f;
+                SetupUtils.SpriteChild(environment, "Blob", PlaceholderArt.Circle, style.blob,
                     new Vector3(x, y, 0f), new Vector2(size, size * (0.7f + (float)random.NextDouble() * 0.6f)), -150);
             }
 
+            Vector2 spawn = new Vector2(startX + 3f, FloorY + 0.05f);
+
             var managerGo = new GameObject("LevelManager");
             var manager = managerGo.AddComponent<LevelManager>();
-            SetupUtils.SetRect(manager, "levelBounds", new Rect(startX, floorMinY, length, floorMaxY - floorMinY));
-            SetupUtils.SetVector2(manager, "spawnPoint", new Vector2(startX + 3f, (floorMinY + floorMaxY) * 0.5f));
-            SetupUtils.SetFloat(manager, "exitX", startX + length - 4f);
+            // yMin = altura de caída al vacío.
+            SetupUtils.SetRect(manager, "levelBounds", new Rect(startX, FloorY - 6f, length, 20f));
+            SetupUtils.SetVector2(manager, "spawnPoint", spawn);
+            SetupUtils.SetFloat(manager, "exitX", endX - 4f);
             SetupUtils.SetRef(manager, "playerPrefab", prefabs.Player);
             SetupUtils.SetString(manager, "introMessage", intro);
 
             // El jugador se coloca en la escena para poder verlo y probar; el LevelManager lo usa.
             var player = (GameObject)PrefabUtility.InstantiatePrefab(prefabs.Player.gameObject);
-            player.transform.position = new Vector3(startX + 3f, (floorMinY + floorMaxY) * 0.5f, 0f);
+            player.transform.position = new Vector3(spawn.x, spawn.y, 0f);
 
             new GameObject("HUD", typeof(HUD));
             new GameObject("PauseMenu", typeof(PauseMenu));
@@ -180,10 +199,55 @@ namespace HealingKnight.EditorTools
             return manager;
         }
 
+        private void FloorSegment(string name, float fromX, float toX)
+        {
+            float width = toX - fromX;
+            if (width <= 0.01f) return;
+            const float depth = 4f;
+
+            var go = new GameObject(name);
+            go.transform.SetParent(environment, false);
+            go.transform.position = new Vector3(fromX + width * 0.5f, FloorY, 0f);
+            go.layer = PhysicsLayers.Ground;
+
+            var box = go.AddComponent<BoxCollider2D>();
+            box.size = new Vector2(width, depth);
+            box.offset = new Vector2(0f, -depth * 0.5f);
+
+            SetupUtils.SpriteChild(go.transform, "Fill", PlaceholderArt.Square, currentStyle.floor,
+                new Vector3(0f, -depth, 0f), new Vector2(width, depth), -100);
+            SetupUtils.SpriteChild(go.transform, "Edge", PlaceholderArt.Square, currentStyle.floorEdge,
+                new Vector3(0f, -0.2f, 0f), new Vector2(width, 0.2f), -99);
+        }
+
+        /// <summary>Plataforma de un solo sentido: se atraviesa saltando desde abajo y se pisa desde arriba.</summary>
+        private void Platform(float centerX, float topY, float width)
+        {
+            const float thickness = 0.35f;
+            var go = new GameObject("Platform");
+            go.transform.SetParent(environment, false);
+            go.transform.position = new Vector3(centerX, topY, 0f);
+            go.layer = PhysicsLayers.Ground;
+
+            var box = go.AddComponent<BoxCollider2D>();
+            box.size = new Vector2(width, thickness);
+            box.offset = new Vector2(0f, -thickness * 0.5f);
+            box.usedByEffector = true;
+            var effector = go.AddComponent<PlatformEffector2D>();
+            effector.useOneWay = true;
+            effector.surfaceArc = 160f;
+
+            SetupUtils.SpriteChild(go.transform, "Sprite", PlaceholderArt.Square, Color.Lerp(currentStyle.floor, Color.black, 0.1f),
+                new Vector3(0f, -thickness, 0f), new Vector2(width, thickness), -90);
+            SetupUtils.SpriteChild(go.transform, "Edge", PlaceholderArt.Square, currentStyle.floorEdge,
+                new Vector3(0f, -0.12f, 0f), new Vector2(width, 0.12f), -89);
+        }
+
         private ArenaZone Arena(string name, float triggerX, float width, string startMessage, params Wave[] waves)
         {
             var arena = new GameObject(name).AddComponent<ArenaZone>();
-            arena.transform.position = new Vector3(triggerX, 0f, 0f);
+            arena.transform.position = new Vector3(triggerX, FloorY, 0f);
+            arena.floorY = FloorY;
             arena.triggerX = triggerX;
             arena.leftBound = triggerX - 3f;
             arena.rightBound = triggerX - 3f + width;
@@ -203,18 +267,19 @@ namespace HealingKnight.EditorTools
             return new SpawnEntry { prefab = prefab, data = enemyData, count = count, side = side };
         }
 
-        private void Acid(float x, float y)
+        private void Acid(float x)
         {
             var acid = (GameObject)PrefabUtility.InstantiatePrefab(prefabs.Acid.gameObject);
-            acid.transform.position = new Vector3(x, y, 0f);
+            acid.transform.position = new Vector3(x, FloorY, 0f);
         }
 
         // ---------- Niveles del Sistema Digestivo ----------
 
-        private void Secret(float x, float y)
+        /// <summary>Pasaje secreto; 'groundY' = piso o plataforma donde está.</summary>
+        private void Secret(float x, float groundY)
         {
             var secret = (GameObject)PrefabUtility.InstantiatePrefab(prefabs.Secret.gameObject);
-            secret.transform.position = new Vector3(x, y, 0f);
+            secret.transform.position = new Vector3(x, groundY + 0.7f, 0f);
         }
 
         private void BuildEstomago()
@@ -226,30 +291,40 @@ namespace HealingKnight.EditorTools
                 floor = new Color(0.82f, 0.48f, 0.36f),
                 floorEdge = new Color(0.95f, 0.75f, 0.35f),
                 blob = new Color(0.9f, 0.8f, 0.3f, 0.35f)
-            }, "NODO: Entrada completada. Estás en el estómago. Muévete con WASD (también hacia el fondo) y salta con Espacio.");
+            }, "NODO: Estás en el estómago. Muévete con A/D, salta con K o Espacio. Apunta con W (W + A/D = diagonal).",
+                new Vector2(31f, 2.5f), new Vector2(65.5f, 2.5f));
+
+            // Plataformas para practicar el salto y el disparo hacia abajo.
+            Platform(0f, 2.2f, 3f);
+            Platform(4.5f, 3.6f, 2.5f);
 
             // Tutorial: un enemigo a la vez.
             Arena("Arena_1_Tutorial", 8f, 18f,
-                "H. pylori: una bacteria. Dispara con J. Cambia de cápsula con Q/E hasta encontrar la que funciona.",
+                "H. pylori: una bacteria. Dispara con J (de cerca acuchilla solo). Cambia de cápsula con Q/E hasta encontrar la que funciona.",
                 W(0.8f, E(prefabs.HPylori, data.HPylori, 1)),
                 W(0.8f, E(prefabs.HPylori, data.HPylori, 2)));
 
-            Acid(28f, -2.6f);
-            Acid(34f, -1.3f);
+            Acid(27.5f);
+
+            // Pasaje secreto en la plataforma más alta, entre la primera y la segunda arena (desbloquea la Boca).
+            Platform(35.5f, 2.2f, 3f);
+            Platform(39f, 4.2f, 2.5f);
+            Secret(39.3f, 4.2f);
 
             Arena("Arena_2_Escudo", 44f, 18f,
-                "Escudo: mantén K. Si lo levantas justo antes del golpe haces PARRY. Golpe cercano: L.",
+                "Escudo: mantén Shift (o I). Si lo levantas justo antes del golpe haces PARRY. Bomba de medicamento: L.",
                 W(0.6f, E(prefabs.HPylori, data.HPylori, 2), E(prefabs.HPylori, data.HPylori, 1, SpawnSide.Left)),
                 W(1.0f, E(prefabs.HPylori, data.HPylori, 3, SpawnSide.Both)));
+            Platform(50f, 2.4f, 4f);
 
-            Acid(66f, -2.2f);
+            Acid(62f);
 
-            Arena("Arena_3_Acido", 72f, 20f, "Ácido gástrico: rodéalo o sáltalo. El escudo no te protege.",
+            Arena("Arena_3_Acido", 72f, 20f, "Ácido gástrico: sáltalo. El escudo no te protege.",
                 W(0.6f, E(prefabs.HPylori, data.HPylori, 3)),
                 W(1.0f, E(prefabs.HPylori, data.HPylori, 2), E(prefabs.HPylori, data.HPylori, 2, SpawnSide.Left)));
-
-            // Pasaje secreto escondido al fondo, entre la primera y la segunda arena (desbloquea la Boca).
-            Secret(38f, -0.75f);
+            Acid(80f);
+            Platform(75f, 2.2f, 3f);
+            Platform(85f, 2.2f, 3f);
         }
 
         private void BuildDelgado()
@@ -261,17 +336,23 @@ namespace HealingKnight.EditorTools
                 floor = new Color(0.8f, 0.45f, 0.5f),
                 floorEdge = new Color(0.92f, 0.62f, 0.65f),
                 blob = new Color(0.75f, 0.4f, 0.5f, 0.5f)
-            }, "NODO: Intestino delgado. Aquí viven los parásitos: usa la cápsula Antiparasitario.");
+            }, "NODO: Intestino delgado. Aquí viven los parásitos: usa la cápsula Antiparasitario.",
+                new Vector2(28f, 2.5f), new Vector2(55f, 3f));
 
-            Arena("Arena_1_Giardia", 10f, 18f, "Giardia: parásito. Antiparasitario.",
+            Platform(3f, 2.2f, 3f);
+
+            Arena("Arena_1_Giardia", 10f, 18f, "Giardia: parásito. Antiparasitario. Agáchate (S) para darle a los bajitos.",
                 W(0.6f, E(prefabs.Giardia, data.Giardia, 2)),
                 W(1.0f, E(prefabs.Giardia, data.Giardia, 2, SpawnSide.Both)));
+            Platform(18f, 2.4f, 3.5f);
 
-            Arena("Arena_2_Rotavirus", 36f, 18f, "Rotavirus: dispara desde lejos. Antiviral y escudo.",
+            Arena("Arena_2_Rotavirus", 36f, 18f, "Rotavirus: vuela y dispara. Apunta arriba (W) o en diagonal. Antiviral.",
                 W(0.6f, E(prefabs.Rotavirus, data.Rotavirus, 2)),
                 W(1.0f, E(prefabs.Rotavirus, data.Rotavirus, 1), E(prefabs.Giardia, data.Giardia, 2, SpawnSide.Left)));
+            Platform(40f, 2.2f, 3f);
+            Platform(47f, 3.4f, 3f);
 
-            // La lombriz aparece, pelea un rato y huye al intestino grueso.
+            // La lombriz aparece, pelea un rato y huye al intestino grueso. Arena sin plataformas.
             Arena("Arena_3_Lombriz", 64f, 22f, null,
                 W(1.0f, E(prefabs.LombrizDelgado, data.Lombriz, 1)));
         }
@@ -285,17 +366,23 @@ namespace HealingKnight.EditorTools
                 floor = new Color(0.68f, 0.45f, 0.38f),
                 floorEdge = new Color(0.8f, 0.58f, 0.48f),
                 blob = new Color(0.55f, 0.35f, 0.3f, 0.5f)
-            }, "NODO: Intestino grueso. La lombriz está cerca.");
+            }, "NODO: Intestino grueso. La lombriz está cerca.",
+                new Vector2(29f, 3f));
 
-            Arena("Arena_1_Amebas", 10f, 18f, "Entamoeba: una ameba lenta y resistente.",
+            Arena("Arena_1_Amebas", 10f, 18f, "Entamoeba: una ameba lenta y resistente. Las bombas (L) ayudan.",
                 W(0.6f, E(prefabs.Entamoeba, data.Entamoeba, 1), E(prefabs.Oxiuro, data.Oxiuro, 2, SpawnSide.Left)),
                 W(1.0f, E(prefabs.Entamoeba, data.Entamoeba, 1), E(prefabs.Oxiuro, data.Oxiuro, 2, SpawnSide.Both)));
+            Platform(14f, 2.2f, 3f);
+
+            Platform(31f, 2.4f, 2.5f);
 
             Arena("Arena_2_CDifficile", 36f, 18f, "C. difficile: bacteria. Antibiótico.",
                 W(0.6f, E(prefabs.CDifficile, data.CDifficile, 2), E(prefabs.Oxiuro, data.Oxiuro, 1, SpawnSide.Left)),
                 W(1.0f, E(prefabs.CDifficile, data.CDifficile, 2), E(prefabs.Entamoeba, data.Entamoeba, 1, SpawnSide.Left)));
+            Platform(42f, 2.2f, 3f);
+            Platform(48f, 2.2f, 3f);
 
-            // Pelea final: desde la fase 2 invoca oxiuros.
+            // Pelea final: desde la fase 2 invoca oxiuros. Arena sin plataformas.
             Arena("Arena_3_LombrizFinal", 64f, 22f, null,
                 W(1.0f, E(prefabs.LombrizGrueso, data.Lombriz, 1)));
         }
@@ -311,13 +398,19 @@ namespace HealingKnight.EditorTools
                 blob = new Color(0.95f, 0.92f, 0.85f, 0.5f)
             }, "NIVEL SECRETO · BOCA. NODO: Placa bacteriana detectada.");
 
+            // Dientes: plataformas blancas.
             Arena("Arena_1_Caries", 8f, 18f, "S. mutans: la bacteria de la caries. Antibiótico.",
                 W(0.6f, E(prefabs.SMutans, data.SMutans, 3)),
                 W(1.0f, E(prefabs.SMutans, data.SMutans, 2), E(prefabs.SMutans, data.SMutans, 2, SpawnSide.Left)));
+            Platform(12f, 2.2f, 2f);
+            Platform(18f, 2.2f, 2f);
 
             Arena("Arena_2_Placa", 34f, 20f, "La placa: muchas a la vez. (Mini jefe 'caries': próximamente)",
                 W(0.6f, E(prefabs.SMutans, data.SMutans, 3, SpawnSide.Both)),
                 W(1.0f, E(prefabs.SMutans, data.SMutans, 4, SpawnSide.Both)));
+            Platform(38f, 2.2f, 2f);
+            Platform(44f, 3.4f, 2f);
+            Platform(50f, 2.2f, 2f);
         }
 
         private void BuildSandbox()
@@ -329,13 +422,19 @@ namespace HealingKnight.EditorTools
                 floor = new Color(0.45f, 0.45f, 0.5f),
                 floorEdge = new Color(0.6f, 0.6f, 0.65f),
                 blob = new Color(0.4f, 0.4f, 0.45f, 0.5f)
-            }, "SANDBOX: escena libre para probar mecánicas. Duplícala para tus pruebas.");
+            }, "SANDBOX: escena libre para probar mecánicas. Duplícala para tus pruebas.",
+                new Vector2(5f, 2f));
 
-            Acid(2f, -2f);
+            Acid(1f);
+            Platform(-3f, 2.2f, 3f);
+            Platform(1f, 3.8f, 2.5f);
+
             Arena("Arena_Enemigos", 10f, 20f, "Todos los enemigos",
                 W(0.5f, E(prefabs.HPylori, data.HPylori, 1), E(prefabs.Giardia, data.Giardia, 1, SpawnSide.Left)),
                 W(0.8f, E(prefabs.Rotavirus, data.Rotavirus, 1), E(prefabs.Entamoeba, data.Entamoeba, 1, SpawnSide.Left)),
                 W(0.8f, E(prefabs.CDifficile, data.CDifficile, 1), E(prefabs.Oxiuro, data.Oxiuro, 2, SpawnSide.Left)));
+            Platform(14f, 2.2f, 3f);
+            Platform(22f, 2.2f, 3f);
 
             Arena("Arena_Jefe", 38f, 22f, "Jefe lombriz (versión final)",
                 W(1.0f, E(prefabs.LombrizGrueso, data.Lombriz, 1)));

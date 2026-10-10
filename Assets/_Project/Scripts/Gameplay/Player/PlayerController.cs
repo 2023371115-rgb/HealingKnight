@@ -1,46 +1,56 @@
 using System;
-using HealingKnight.Core.Depth;
+using HealingKnight.Core.Combat2D;
+using HealingKnight.Core.Damage;
+using HealingKnight.Gameplay.Combat;
 using HealingKnight.Gameplay.Movement;
 using UnityEngine;
 
 namespace HealingKnight.Gameplay.Player
 {
     /// <summary>
-    /// Cerebro de Healing Knight: lee los controles y coordina movimiento, salto, disparo, golpe y escudo.
-    /// Cada habilidad vive en su propio componente; este solo decide qué se puede hacer en cada momento.
+    /// Cerebro de Healing Knight (estilo Metal Slug): correr a velocidad constante, salto de altura fija,
+    /// agacharse, apuntar en 8 direcciones (diagonal = dos teclas), disparar, cuchillazo automático,
+    /// bomba de medicamento y escudo burbuja. Cada habilidad vive en su propio componente.
     /// </summary>
-    [RequireComponent(typeof(DepthBody), typeof(PlayerInputReader))]
+    [RequireComponent(typeof(CharacterMotor2D), typeof(PlayerInputReader))]
     public class PlayerController : MonoBehaviour
     {
         public enum State { Normal, Hurt, Dead }
 
         [SerializeField] private PlayerConfig config;
+        [Tooltip("Opcional: se aplasta al agacharse (placeholder hasta tener animaciones).")]
+        [SerializeField] private Transform bodyVisual;
 
-        private DepthBody body;
+        private CharacterMotor2D motor;
         private PlayerInputReader input;
         private PlayerShooter shooter;
-        private PlayerMelee meleeAttack;
+        private PlayerBombs bombs;
         private PlayerShield shield;
         private PlayerHealth health;
+        private Hurtbox hurtbox;
 
         private State state = State.Normal;
         private float stateTimer;
-        private Vector2 velocity;
-        private float knockbackVelocity;
+        private bool crouching;
+        private Vector2 aim = Vector2.right;
+        private Vector2 lastSafePosition;
+        private Vector3 bodyVisualBaseScale = Vector3.one;
 
         /// <summary>El jugador actual (el juego es para un jugador).</summary>
         public static PlayerController Current { get; private set; }
         public static event Action<PlayerController> Spawned;
 
         public PlayerConfig Config => config;
-        public DepthBody Body => body;
+        public CharacterMotor2D Motor => motor;
         public PlayerInputReader Input => input;
         public PlayerShooter Shooter => shooter;
-        public PlayerMelee Melee => meleeAttack;
+        public PlayerBombs Bombs => bombs;
         public PlayerShield Shield => shield;
         public PlayerHealth Health => health;
         public State CurrentState => state;
-        public bool IsBusyAttacking => meleeAttack != null && meleeAttack.IsAttacking;
+        public bool IsCrouching => crouching;
+        public Vector2 Aim => aim;
+        public Vector2 Position => motor.Position;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetStatics()
@@ -51,30 +61,30 @@ namespace HealingKnight.Gameplay.Player
 
         private void Awake()
         {
-            body = GetComponent<DepthBody>();
+            motor = GetComponent<CharacterMotor2D>();
             input = GetComponent<PlayerInputReader>();
             shooter = GetComponent<PlayerShooter>();
-            meleeAttack = GetComponent<PlayerMelee>();
+            bombs = GetComponent<PlayerBombs>();
             shield = GetComponent<PlayerShield>();
             health = GetComponent<PlayerHealth>();
+            hurtbox = GetComponent<Hurtbox>();
+            if (bodyVisual != null) bodyVisualBaseScale = bodyVisual.localScale;
 
             if (config == null) Debug.LogError("[PlayerController] Falta asignar PlayerConfig.", this);
         }
 
-        private void OnEnable()
-        {
-            Current = this;
-        }
-
-        private void Start()
-        {
-            // En Start todos los componentes del jugador ya hicieron su Awake.
-            Spawned?.Invoke(this);
-        }
+        private void OnEnable() => Current = this;
 
         private void OnDisable()
         {
             if (Current == this) Current = null;
+        }
+
+        private void Start()
+        {
+            lastSafePosition = motor.Position;
+            // En Start todos los componentes del jugador ya hicieron su Awake.
+            Spawned?.Invoke(this);
         }
 
         private void Update()
@@ -84,71 +94,90 @@ namespace HealingKnight.Gameplay.Player
 
             switch (state)
             {
-                case State.Normal: UpdateNormal(dt); break;
-                case State.Hurt: UpdateHurt(dt); break;
-                case State.Dead: body.SetGroundVelocity(Vector2.zero); break;
+                case State.Normal: UpdateNormal(); break;
+                case State.Hurt:
+                    stateTimer -= dt;
+                    if (stateTimer <= 0f) state = State.Normal;
+                    break;
+                case State.Dead:
+                    motor.SetHorizontalVelocity(0f);
+                    break;
             }
+
+            CheckFall();
         }
 
-        private void UpdateNormal(float dt)
+        private void UpdateNormal()
         {
+            Vector2 move = input.Move;
             bool shielding = shield != null && shield.IsActive;
-            bool attacking = IsBusyAttacking;
 
-            // Movimiento
-            Vector2 wanted = input.Move;
-            float speed = config.moveSpeed;
+            // Agacharse (solo en el suelo).
+            SetCrouch(motor.IsGrounded && move.y < -0.5f && !shielding);
+
+            // Hacia dónde mira.
+            if (Mathf.Abs(move.x) > 0.3f) motor.SetFacing(move.x > 0f ? 1 : -1);
+
+            // Correr: velocidad constante, sin inercia (como Metal Slug).
+            float speed = crouching ? config.crouchSpeed : config.runSpeed;
             if (shielding) speed *= config.shieldMoveSpeedMultiplier;
-            if (attacking) speed *= 0.3f;
+            float target = Mathf.Abs(move.x) > 0.3f ? Mathf.Sign(move.x) * speed : 0f;
+            float vx = motor.IsGrounded ? target : Mathf.Lerp(motor.Velocity.x, target, config.airControl);
+            motor.SetHorizontalVelocity(vx);
 
-            Vector2 target = new Vector2(wanted.x * speed, wanted.y * speed * config.depthSpeedFactor);
-            float control = body.IsGrounded ? 1f : config.airControl;
-            float rate = (wanted.sqrMagnitude > 0.01f ? config.acceleration : config.deceleration) * control;
-            velocity = Vector2.MoveTowards(velocity, target, rate * dt);
-            body.SetGroundVelocity(velocity);
-
-            // Hacia dónde mira: no se voltea mientras bloquea ni mientras golpea.
-            if (!shielding && !attacking && Mathf.Abs(wanted.x) > 0.1f)
-                body.SetFacing(wanted.x > 0f ? 1 : -1);
-
-            // Salto
-            if (input.JumpPressed && body.IsGrounded && !shielding && !attacking)
+            // Salto de altura fija.
+            if (input.JumpPressed && motor.IsGrounded && !shielding)
             {
-                body.Jump(JumpMath.InitialVelocity(config.jumpHeight, config.timeToApex),
-                    JumpMath.Gravity(config.jumpHeight, config.timeToApex),
-                    config.fallGravityMultiplier);
+                SetCrouch(false);
+                motor.Jump(config.jumpHeight, config.timeToApex);
             }
 
-            // Medicamentos
+            // Apuntar: arriba, diagonales (dos teclas), abajo solo en el aire.
+            aim = crouching ? new Vector2(motor.Facing, 0f) : AimMath.Resolve(move, motor.Facing, motor.IsGrounded);
+
+            // Medicamentos.
             if (shooter != null)
             {
                 if (input.MedicationStep != 0) shooter.CycleMedication(input.MedicationStep);
                 if (input.DirectMedicationIndex >= 0) shooter.SelectMedication(input.DirectMedicationIndex);
             }
 
-            // Escudo
-            if (shield != null) shield.SetWantsBlock(input.ShieldHeld && !attacking);
+            // Escudo.
+            if (shield != null) shield.SetWantsBlock(input.ShieldHeld);
 
-            // Ataques (no con el escudo arriba)
-            if (!shielding)
-            {
-                if (meleeAttack != null && input.MeleePressed) meleeAttack.TryAttack();
-                else if (shooter != null && input.ShootHeld && !attacking) shooter.TryShoot();
-            }
+            if (shielding) return;
+
+            // Disparo (o cuchillazo automático si hay un enemigo pegado).
+            if (shooter != null && (input.ShootPressed || input.ShootHeld))
+                shooter.TryAttack(aim, crouching, input.ShootPressed);
+
+            // Bomba de medicamento.
+            if (bombs != null && input.BombPressed) bombs.TryThrow();
+
+            if (motor.IsGrounded) lastSafePosition = motor.Position;
         }
 
-        private void UpdateHurt(float dt)
+        private void SetCrouch(bool value)
         {
-            stateTimer -= dt;
-            knockbackVelocity = Mathf.MoveTowards(knockbackVelocity, 0f, config.knockbackDecay * dt);
-            body.SetGroundVelocity(new Vector2(knockbackVelocity, 0f));
-            if (shield != null) shield.SetWantsBlock(false);
+            if (crouching == value) return;
+            crouching = value;
+            motor.SetColliderHeight(value ? config.standingColliderHeight * config.crouchHeightFactor : config.standingColliderHeight);
+            if (hurtbox != null) hurtbox.SetHeightFactor(value ? config.crouchHeightFactor : 1f);
+            if (bodyVisual != null)
+                bodyVisual.localScale = value
+                    ? new Vector3(bodyVisualBaseScale.x * 1.1f, bodyVisualBaseScale.y * config.crouchHeightFactor, bodyVisualBaseScale.z)
+                    : bodyVisualBaseScale;
+        }
 
-            if (stateTimer <= 0f)
-            {
-                state = State.Normal;
-                velocity = Vector2.zero;
-            }
+        private void CheckFall()
+        {
+            if (state == State.Dead || motor.Position.y > WalkableArea.KillY) return;
+
+            // Caída al vacío: daño y regreso al último suelo seguro.
+            DamageInfo info = DamageInfo.Create(config.fallDamage, DamageKind.Environment, Team.Neutral, motor.Position);
+            info.blockable = false;
+            health?.ApplyDamage(info);
+            if (state != State.Dead) motor.Teleport(lastSafePosition + Vector2.up * 0.5f);
         }
 
         /// <summary>Lo llama PlayerHealth al recibir un golpe.</summary>
@@ -157,29 +186,27 @@ namespace HealingKnight.Gameplay.Player
             if (state == State.Dead) return;
             state = State.Hurt;
             stateTimer = config.hurtStunTime;
-            knockbackVelocity = knockbackDirection * knockbackForce;
-            meleeAttack?.Cancel();
-            if (knockbackForce > 0.01f && body.IsGrounded) body.Pop(3f);
+            SetCrouch(false);
+            motor.SetVelocity(new Vector2(knockbackDirection * knockbackForce, Mathf.Min(4f, knockbackForce)));
         }
 
         public void OnDied()
         {
             state = State.Dead;
-            velocity = Vector2.zero;
-            body.SetGroundVelocity(Vector2.zero);
+            SetCrouch(false);
+            motor.SetHorizontalVelocity(0f);
             shield?.SetWantsBlock(false);
-            meleeAttack?.Cancel();
         }
 
-        public void Respawn(Vector2 groundPosition)
+        public void Respawn(Vector2 position)
         {
-            body.Teleport(groundPosition);
-            body.SetFacing(1);
-            velocity = Vector2.zero;
-            knockbackVelocity = 0f;
+            motor.Teleport(position);
+            motor.SetFacing(1);
+            lastSafePosition = position;
             state = State.Normal;
             health?.ResetHealth();
             shield?.ResetEnergy();
+            bombs?.Refill(); // como en Metal Slug: vida nueva, bombas completas
         }
     }
 }

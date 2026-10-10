@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using HealingKnight.Core.Combat;
+using HealingKnight.Core.Combat2D;
 using HealingKnight.Core.Damage;
 using HealingKnight.Core.Flow;
 using HealingKnight.Core.Pooling;
@@ -11,15 +12,19 @@ using UnityEngine;
 namespace HealingKnight.Gameplay.Player
 {
     /// <summary>
-    /// Brazo-pistola: dispara cápsulas del medicamento seleccionado y cambia entre medicamentos.
-    /// El ciclo es: medicamentos genéricos + la cápsula regional del sistema actual.
+    /// Brazo-pistola (estilo Metal Slug):
+    /// - Dispara cápsulas del medicamento seleccionado en la dirección a la que apuntas.
+    /// - Si al disparar hay un enemigo pegado enfrente, en lugar de disparar da un cuchillazo automático.
+    /// - Cambia entre medicamentos: genéricos + la cápsula regional del sistema actual.
     /// </summary>
     [RequireComponent(typeof(PlayerController))]
     public class PlayerShooter : MonoBehaviour
     {
         [SerializeField] private Projectile capsulePrefab;
+        [SerializeField] private LayerMask groundMask = 1 << 6;
 
-        [Tooltip("Opcional: se pinta del color del medicamento seleccionado (el brazo-pistola).")]
+        [Tooltip("Brazo-pistola: rota hacia donde apuntas y se pinta del color del medicamento.")]
+        [SerializeField] private Transform armPivot;
         [SerializeField] private SpriteRenderer tintedArm;
 
         [Tooltip("Para probar una escena sin pasar por el mapa: cápsula regional a usar si no hay sistema actual.")]
@@ -28,11 +33,14 @@ namespace HealingKnight.Gameplay.Player
         private PlayerController controller;
         private ComponentPool<Projectile> pool;
         private readonly List<MedicationData> loadout = new List<MedicationData>();
+        private readonly List<Hurtbox> meleeHits = new List<Hurtbox>();
         private int selectedIndex;
-        private float cooldown;
+        private float fireCooldown;
+        private float meleeCooldown;
 
         public event Action<MedicationData> MedicationChanged;
         public event Action Fired;
+        public event Action Stabbed;
 
         public MedicationData Current => loadout.Count > 0 ? loadout[selectedIndex] : null;
         public IReadOnlyList<MedicationData> Loadout => loadout;
@@ -64,8 +72,27 @@ namespace HealingKnight.Gameplay.Player
 
         private void Update()
         {
-            if (cooldown > 0f) cooldown -= Time.deltaTime;
+            float dt = Time.deltaTime;
+            if (fireCooldown > 0f) fireCooldown -= dt;
+            if (meleeCooldown > 0f) meleeCooldown -= dt;
+            UpdateArm();
         }
+
+        private void UpdateArm()
+        {
+            if (armPivot == null) return;
+            // El Visual está volteado cuando mira a la izquierda: el ángulo se calcula en su espacio local.
+            Vector2 aim = controller.Aim;
+            float angle = Mathf.Atan2(aim.y, aim.x * controller.Motor.Facing) * Mathf.Rad2Deg;
+            armPivot.localRotation = Quaternion.Euler(0f, 0f, angle);
+
+            // El hombro baja al agacharse (coincide con la altura desde la que sale el disparo).
+            PlayerConfig c = controller.Config;
+            Vector3 p = armPivot.localPosition;
+            armPivot.localPosition = new Vector3(p.x, controller.IsCrouching ? c.crouchMuzzleHeight : c.muzzleHeight, p.z);
+        }
+
+        // ---------------------------------------------------------------- medicamentos
 
         public void BuildLoadout()
         {
@@ -106,36 +133,82 @@ namespace HealingKnight.Gameplay.Player
         }
 
         /// <summary>Recompensa del parry: el siguiente disparo sale al instante.</summary>
-        public void ResetCooldown() => cooldown = 0f;
+        public void ResetCooldown() => fireCooldown = 0f;
 
-        public bool TryShoot()
+        // ---------------------------------------------------------------- ataque
+
+        /// <summary>Dispara, o da un cuchillazo si hay un enemigo pegado. 'pressed' = se acaba de presionar.</summary>
+        public void TryAttack(Vector2 aim, bool crouching, bool pressed)
         {
-            if (cooldown > 0f || pool == null || Current == null) return false;
+            if (TryStab(crouching)) return;
+            TryShoot(aim, crouching);
+        }
+
+        private bool TryStab(bool crouching)
+        {
+            if (meleeCooldown > 0f) return false;
+            PlayerConfig c = controller.Config;
+            CharacterMotor2D motor = controller.Motor;
+
+            float height = crouching ? 0.5f : 0.95f;
+            Vector2 center = motor.Position + new Vector2(motor.Facing * c.meleeReach * 0.5f, height);
+            Rect area = HitMath.FromCenter(center, new Vector2(c.meleeReach, crouching ? 0.9f : 1.5f));
+
+            Hurtbox.QueryRect(Team.Enemy, area, meleeHits);
+            if (meleeHits.Count == 0) return false;
+
+            foreach (Hurtbox h in meleeHits)
+            {
+                DamageInfo info = DamageInfo.Create(c.meleeDamage, DamageKind.Melee, Team.Player, motor.Position);
+                info.knockback = c.meleeKnockback;
+                h.Damageable.ApplyDamage(info);
+            }
+
+            meleeCooldown = c.meleeCooldown;
+            fireCooldown = Mathf.Max(fireCooldown, c.meleeCooldown * 0.5f);
+            Stabbed?.Invoke();
+            return true;
+        }
+
+        public bool TryShoot(Vector2 aim, bool crouching)
+        {
+            if (fireCooldown > 0f || pool == null || Current == null) return false;
             PlayerConfig c = controller.Config;
             if (pool.CountActive >= c.maxActiveCapsules) return false;
 
-            DepthBody body = controller.Body;
+            CharacterMotor2D motor = controller.Motor;
+            Vector2 shoulder = motor.Position + new Vector2(0f, crouching ? c.crouchMuzzleHeight : c.muzzleHeight);
+            Vector2 dir = aim.sqrMagnitude > 0.01f ? aim.normalized : new Vector2(motor.Facing, 0f);
+
             Projectile capsule = pool.Get();
             capsule.Launch(new ProjectileShot
             {
-                origin = body.GroundPosition + new Vector2(body.Facing * c.muzzleForward, 0f),
-                height = body.Height + c.muzzleHeight,
-                direction = body.Facing,
+                origin = shoulder + dir * c.muzzleForward,
+                direction = dir,
                 speed = c.capsuleSpeed,
                 range = c.capsuleRange,
                 damage = c.capsuleDamage,
                 knockback = c.capsuleKnockback,
-                laneTolerance = c.capsuleLaneTolerance,
-                halfWidth = 0.15f,
+                radius = 0.18f,
                 sourceTeam = Team.Player,
                 targetTeam = Team.Enemy,
                 medication = Current,
-                color = Current.color
+                color = Current.color,
+                groundMask = groundMask
             }, p => pool.Release(p));
 
-            cooldown = c.fireInterval;
+            fireCooldown = c.fireInterval;
             Fired?.Invoke();
             return true;
+        }
+
+        private void OnDrawGizmosSelected()
+        {
+            if (controller == null || controller.Config == null || controller.Motor == null) return;
+            PlayerConfig c = controller.Config;
+            Vector2 center = controller.Motor.Position + new Vector2(controller.Motor.Facing * c.meleeReach * 0.5f, 0.95f);
+            Gizmos.color = new Color(1f, 0.5f, 0f, 0.6f);
+            Gizmos.DrawWireCube(center, new Vector3(c.meleeReach, 1.5f, 0f));
         }
     }
 }

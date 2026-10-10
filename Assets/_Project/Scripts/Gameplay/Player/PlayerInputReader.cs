@@ -4,30 +4,34 @@ using UnityEngine.InputSystem;
 namespace HealingKnight.Gameplay.Player
 {
     /// <summary>
-    /// Lee los controles con el Input System (teclado y gamepad).
-    /// Las acciones se crean aquí en código para que se vean todos los controles en un solo lugar.
+    /// Controles estilo Metal Slug (teclado y gamepad). Las acciones se crean aquí en código
+    /// para que se vean todos los controles en un solo lugar.
     ///
-    ///   Acción              Teclado              Gamepad
-    ///   Mover               WASD / flechas        Stick izq. / cruceta
-    ///   Saltar              Espacio               A (sur)
-    ///   Disparar (mantener) J                     X (oeste)
-    ///   Golpe cercano       L                     Y (norte)
-    ///   Escudo (mantener)   K                     B (este) / gatillo izq.
-    ///   Medicamento ant/sig Q / E                 LB / RB
-    ///   Medicamento directo 1 a 5                 —
-    ///   Pausa               Esc                   Start
+    ///   Acción                         Teclado            Gamepad
+    ///   Mover                          A / D, flechas     Stick izq. / cruceta
+    ///   Apuntar arriba / diagonal      W  (+ A o D)       Arriba (+ lado)
+    ///   Agacharse / apuntar abajo*     S  (+ A o D)       Abajo (+ lado)      *abajo solo en el aire
+    ///   Disparar (mantener)            J                  X (oeste)
+    ///   Saltar                         K / Espacio        A (sur)
+    ///   Bomba de medicamento           L                  B (este)
+    ///   Escudo burbuja (mantener)      Shift izq. / I     Gatillo izq.
+    ///   Medicamento anterior/siguiente Q / E              LB / RB
+    ///   Medicamento directo            1 a 5              —
+    ///   Pausa                          Esc                Start
     /// </summary>
     [DefaultExecutionOrder(-100)]
     public class PlayerInputReader : MonoBehaviour
     {
         private InputActionMap map;
-        private InputAction move, jump, shoot, melee, shield, prevMed, nextMed, pause;
+        private InputAction move, jump, shoot, bomb, shield, prevMed, nextMed, pause;
         private InputAction[] directMed;
 
+        /// <summary>Dirección (incluye arriba/abajo para apuntar y agacharse).</summary>
         public Vector2 Move { get; private set; }
         public bool JumpPressed { get; private set; }
+        public bool ShootPressed { get; private set; }
         public bool ShootHeld { get; private set; }
-        public bool MeleePressed { get; private set; }
+        public bool BombPressed { get; private set; }
         public bool ShieldHeld { get; private set; }
         public int MedicationStep { get; private set; }   // -1, 0 o 1
         public int DirectMedicationIndex { get; private set; } = -1;
@@ -50,22 +54,23 @@ namespace HealingKnight.Gameplay.Player
             move.AddBinding("<Gamepad>/leftStick");
             move.AddBinding("<Gamepad>/dpad");
 
-            jump = map.AddAction("Jump", InputActionType.Button);
-            jump.AddBinding("<Keyboard>/space");
-            jump.AddBinding("<Gamepad>/buttonSouth");
-
             shoot = map.AddAction("Shoot", InputActionType.Button);
             shoot.AddBinding("<Keyboard>/j");
             shoot.AddBinding("<Gamepad>/buttonWest");
             shoot.AddBinding("<Gamepad>/rightTrigger");
 
-            melee = map.AddAction("Melee", InputActionType.Button);
-            melee.AddBinding("<Keyboard>/l");
-            melee.AddBinding("<Gamepad>/buttonNorth");
+            jump = map.AddAction("Jump", InputActionType.Button);
+            jump.AddBinding("<Keyboard>/k");
+            jump.AddBinding("<Keyboard>/space");
+            jump.AddBinding("<Gamepad>/buttonSouth");
+
+            bomb = map.AddAction("Bomb", InputActionType.Button);
+            bomb.AddBinding("<Keyboard>/l");
+            bomb.AddBinding("<Gamepad>/buttonEast");
 
             shield = map.AddAction("Shield", InputActionType.Button);
-            shield.AddBinding("<Keyboard>/k");
-            shield.AddBinding("<Gamepad>/buttonEast");
+            shield.AddBinding("<Keyboard>/leftShift");
+            shield.AddBinding("<Keyboard>/i");
             shield.AddBinding("<Gamepad>/leftTrigger");
 
             prevMed = map.AddAction("PrevMedication", InputActionType.Button);
@@ -100,7 +105,7 @@ namespace HealingKnight.Gameplay.Player
             if (Blocked)
             {
                 Move = Vector2.zero;
-                JumpPressed = ShootHeld = MeleePressed = ShieldHeld = false;
+                JumpPressed = ShootPressed = ShootHeld = BombPressed = ShieldHeld = false;
                 MedicationStep = 0;
                 DirectMedicationIndex = -1;
                 return;
@@ -109,8 +114,9 @@ namespace HealingKnight.Gameplay.Player
             Vector2 m = move.ReadValue<Vector2>();
             Move = m.sqrMagnitude > 1f ? m.normalized : m;
             JumpPressed = jump.WasPressedThisFrame();
+            ShootPressed = shoot.WasPressedThisFrame();
             ShootHeld = shoot.IsPressed();
-            MeleePressed = melee.WasPressedThisFrame();
+            BombPressed = bomb.WasPressedThisFrame();
             ShieldHeld = shield.IsPressed();
 
             MedicationStep = 0;

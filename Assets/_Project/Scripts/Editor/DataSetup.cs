@@ -80,6 +80,7 @@ namespace HealingKnight.EditorTools
             PlayerConfig = SetupUtils.LoadOrCreate<PlayerConfig>($"{DataFolder}/Player/PlayerConfig.asset", c =>
             {
                 c.muzzleHeight = 0.85f;
+                c.crouchMuzzleHeight = 0.5f;
                 c.genericMedications = new List<MedicationData> { Antibiotico, Antiviral, Antiinflamatorio, Antihistaminico };
             });
         }
@@ -115,6 +116,7 @@ namespace HealingKnight.EditorTools
                 e.displayName = "Rotavirus";
                 e.threat = ThreatType.Virus;
                 e.maxHealth = 20f; e.moveSpeed = 2f;
+                e.movement = EnemyMovement.Flying; e.flyHeight = 2.6f;
                 e.attackType = EnemyAttackType.Ranged;
                 e.attackDistance = 5.5f; e.attackWindup = 0.4f; e.attackCooldown = 2.5f; e.attackDamage = 10f;
                 e.projectileColor = new Color(0.8f, 0.5f, 1f);

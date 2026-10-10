@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using HealingKnight.Core.Combat2D;
 using HealingKnight.Core.Damage;
 using HealingKnight.Core.Pooling;
 using HealingKnight.Gameplay.Combat;
@@ -9,52 +10,55 @@ using UnityEngine;
 namespace HealingKnight.Gameplay.Enemies
 {
     /// <summary>
-    /// IA de enemigo de beat 'em up:
-    /// 1. Se acerca al jugador y se alinea con su franja de profundidad.
-    /// 2. Pide una "ficha de ataque" (máx. 2 atacando a la vez). Sin ficha, espera a cierta distancia.
-    /// 3. Avisa (se ilumina), ataca (embestida o disparo) y se recupera.
-    /// 4. Al recibir daño se aturde un momento y sale empujado.
+    /// IA de enemigo en vista lateral (estilo Metal Slug):
+    /// - De suelo: camina hacia el jugador sin caerse de las plataformas, avisa (se ilumina) y embiste.
+    /// - Volador: flota sobre el jugador, guarda distancia, avisa y dispara apuntándole.
+    /// Usa "fichas de ataque" (máx. 2 atacando a la vez) para que los grupos sean justos.
     /// </summary>
-    [RequireComponent(typeof(DepthBody), typeof(EnemyHealth))]
+    [RequireComponent(typeof(EnemyHealth))]
     public class EnemyBrain : MonoBehaviour
     {
-        private enum State { Idle, Approach, Wait, Windup, Attack, Recover, Hurt, Dead }
+        private enum State { Idle, Approach, Windup, Attack, Recover, Hurt, Dead }
 
         [SerializeField] private EnemyData data;
+        [SerializeField] private Transform visual;
 
-        [Tooltip("Solo para enemigos a distancia.")]
+        [Tooltip("Solo para enemigos que disparan.")]
         [SerializeField] private Projectile projectilePrefab;
+        [SerializeField] private LayerMask groundMask = 1 << 6;
 
         [Tooltip("Distancia a la que esperan su turno los que no tienen ficha de ataque.")]
-        [SerializeField] private float waitDistance = 3.2f;
-
-        [Tooltip("Separación mínima entre enemigos para que no se encimen.")]
-        [SerializeField] private float separationRadius = 0.7f;
+        [SerializeField] private float waitDistance = 3.5f;
 
         private static readonly List<EnemyBrain> active = new List<EnemyBrain>();
 
-        private DepthBody body;
+        private CharacterMotor2D motor;   // null en voladores
         private EnemyHealth health;
         private ComponentPool<Projectile> projectilePool;
         private State state = State.Idle;
         private float timer;
         private float attackCooldown;
         private float knockbackVelocity;
-        private float depthOffset;
+        private int facing = -1;
         private int attackDirection;
         private bool attackLanded;
+        private float bobPhase;
+        private Vector3 visualBaseScale = Vector3.one;
 
         public EnemyData Data => data;
+        private bool IsFlying => motor == null;
+        private Vector2 Position => transform.position;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetStatics() => active.Clear();
 
         private void Awake()
         {
-            body = GetComponent<DepthBody>();
+            motor = GetComponent<CharacterMotor2D>();
             health = GetComponent<EnemyHealth>();
-            depthOffset = Random.Range(-0.6f, 0.6f);
-            attackCooldown = Random.Range(0.3f, 1.2f);
+            attackCooldown = Random.Range(0.4f, 1.2f);
+            bobPhase = Random.value * 10f;
+            if (visual != null) visualBaseScale = new Vector3(Mathf.Abs(visual.localScale.x), visual.localScale.y, visual.localScale.z);
         }
 
         private void OnEnable()
@@ -73,15 +77,9 @@ namespace HealingKnight.Gameplay.Enemies
             health.SetTelegraph(false);
         }
 
-        private void OnDestroy()
-        {
-            projectilePool?.Clear();
-        }
+        private void OnDestroy() => projectilePool?.Clear();
 
-        public void Configure(EnemyData enemyData)
-        {
-            data = enemyData;
-        }
+        public void Configure(EnemyData enemyData) => data = enemyData;
 
         private void Start()
         {
@@ -93,6 +91,13 @@ namespace HealingKnight.Gameplay.Enemies
         {
             if (data == null || state == State.Dead) return;
 
+            // Cayó a un hueco: cuenta como eliminado.
+            if (Position.y < WalkableArea.KillY)
+            {
+                Destroy(gameObject);
+                return;
+            }
+
             float dt = Time.deltaTime;
             if (attackCooldown > 0f) attackCooldown -= dt;
 
@@ -102,29 +107,27 @@ namespace HealingKnight.Gameplay.Enemies
             switch (state)
             {
                 case State.Idle:
-                    body.SetGroundVelocity(Vector2.zero);
-                    if (playerAvailable && Vector2.Distance(body.GroundPosition, player.Body.GroundPosition) <= data.aggroRange)
-                        state = State.Approach;
+                    Move(Vector2.zero);
+                    if (playerAvailable && Vector2.Distance(Position, player.Position) <= data.aggroRange) state = State.Approach;
                     break;
 
                 case State.Approach:
-                case State.Wait:
                     if (!playerAvailable) { GoIdle(); break; }
-                    UpdateApproach(player, dt);
+                    UpdateApproach(player);
                     break;
 
                 case State.Windup:
-                    body.SetGroundVelocity(Vector2.zero);
+                    Move(Vector2.zero);
                     timer -= dt;
                     if (timer <= 0f) BeginAttack(player);
                     break;
 
                 case State.Attack:
-                    UpdateAttack(player, dt);
+                    UpdateAttack(player);
                     break;
 
                 case State.Recover:
-                    body.SetGroundVelocity(Vector2.zero);
+                    Move(Vector2.zero);
                     timer -= dt;
                     if (timer <= 0f) state = State.Approach;
                     break;
@@ -132,69 +135,98 @@ namespace HealingKnight.Gameplay.Enemies
                 case State.Hurt:
                     timer -= dt;
                     knockbackVelocity = Mathf.MoveTowards(knockbackVelocity, 0f, 20f * dt);
-                    body.SetGroundVelocity(new Vector2(knockbackVelocity, 0f));
+                    Move(new Vector2(knockbackVelocity, 0f));
                     if (timer <= 0f) state = State.Approach;
                     break;
             }
         }
 
-        private void UpdateApproach(PlayerController player, float dt)
+        // ---------------------------------------------------------------- movimiento
+
+        private void Move(Vector2 velocity)
         {
-            Vector2 me = body.GroundPosition;
-            Vector2 target = player.Body.GroundPosition;
-            int side = me.x >= target.x ? 1 : -1;   // de qué lado del jugador estoy
+            if (motor != null)
+            {
+                motor.SetHorizontalVelocity(velocity.x);
+            }
+            else
+            {
+                // Volador: se mueve directo, con un vaivén suave.
+                bobPhase += Time.deltaTime * 2.5f;
+                Vector2 bob = new Vector2(0f, Mathf.Sin(bobPhase) * 0.6f);
+                transform.position += (Vector3)((velocity + bob) * Time.deltaTime);
+            }
+        }
+
+        private void Face(int direction)
+        {
+            if (direction == 0) return;
+            facing = direction;
+            if (motor != null) motor.SetFacing(direction);
+            else if (visual != null) visual.localScale = new Vector3(visualBaseScale.x * direction, visualBaseScale.y, visualBaseScale.z);
+        }
+
+        private void UpdateApproach(PlayerController player)
+        {
+            Vector2 me = Position;
+            Vector2 target = player.Position;
+            int side = me.x >= target.x ? 1 : -1; // de qué lado del jugador estoy
+            Face(-side);
 
             bool hasToken = AttackTokens.TryAcquire(this);
-            state = hasToken ? State.Approach : State.Wait;
+            float desiredDistance = hasToken ? data.attackDistance * (data.attackType == EnemyAttackType.Melee ? 0.85f : 1f) : waitDistance;
+            if (data.attackType == EnemyAttackType.Ranged) desiredDistance = Mathf.Max(desiredDistance, data.attackDistance);
 
-            float desiredDistance = data.attackType == EnemyAttackType.Ranged
-                ? data.attackDistance
-                : (hasToken ? data.attackDistance * 0.85f : waitDistance);
+            float desiredX = target.x + side * desiredDistance;
+            float dx = desiredX - me.x;
+            Vector2 velocity = Vector2.zero;
+            if (Mathf.Abs(dx) > 0.2f) velocity.x = Mathf.Sign(dx) * data.moveSpeed;
 
-            if (!hasToken && data.attackType == EnemyAttackType.Ranged) desiredDistance = Mathf.Max(desiredDistance, waitDistance);
+            if (IsFlying)
+            {
+                float desiredY = target.y + data.flyHeight;
+                float dy = desiredY - me.y;
+                if (Mathf.Abs(dy) > 0.2f) velocity.y = Mathf.Sign(dy) * data.moveSpeed * 0.7f;
+            }
+            else if (velocity.x != 0f)
+            {
+                // No caerse de la plataforma.
+                int moveDir = velocity.x > 0f ? 1 : -1;
+                motor.SetFacing(moveDir);
+                if (!motor.HasGroundAhead()) velocity.x = 0f;
+                motor.SetFacing(-side);
+            }
 
-            // Con ficha se alinea exacto con el jugador; sin ficha se queda un poco desfasado.
-            float desiredDepth = target.y + (hasToken ? 0f : depthOffset);
-            Vector2 desired = new Vector2(target.x + side * desiredDistance, desiredDepth);
-
-            Vector2 toDesired = desired - me;
-            Vector2 move = Vector2.zero;
-            if (Mathf.Abs(toDesired.x) > 0.15f) move.x = Mathf.Sign(toDesired.x);
-            if (Mathf.Abs(toDesired.y) > 0.08f) move.y = Mathf.Sign(toDesired.y) * data.depthSpeedFactor;
-
-            move += Separation() * 0.8f;
-            Vector2 velocity = move.sqrMagnitude > 1f ? move.normalized * data.moveSpeed : move * data.moveSpeed;
-            body.SetGroundVelocity(velocity);
-            body.SetFacing(target.x >= me.x ? 1 : -1);
+            velocity.x += Separation() * 1.5f;
+            Move(velocity);
 
             // ¿Listo para atacar?
-            bool inLane = Mathf.Abs(target.y - me.y) <= data.laneTolerance * 0.8f;
-            bool inRange = Mathf.Abs(target.x - me.x) <= desiredDistance + 0.25f;
-            if (hasToken && inLane && inRange && attackCooldown <= 0f)
+            bool inRange = Mathf.Abs(target.x - me.x) <= desiredDistance + 0.4f;
+            bool heightOk = IsFlying || Mathf.Abs(target.y - me.y) < 1.2f;
+            if (hasToken && inRange && heightOk && attackCooldown <= 0f)
             {
                 state = State.Windup;
                 timer = data.attackWindup;
-                attackDirection = target.x >= me.x ? 1 : -1;
-                body.SetFacing(attackDirection);
+                attackDirection = -side;
                 health.SetTelegraph(true);
             }
         }
 
-        private Vector2 Separation()
+        private float Separation()
         {
-            Vector2 push = Vector2.zero;
-            Vector2 me = body.GroundPosition;
+            float push = 0f;
             for (int i = 0; i < active.Count; i++)
             {
                 EnemyBrain other = active[i];
-                if (other == this) continue;
-                Vector2 d = me - other.body.GroundPosition;
-                float dist = d.magnitude;
-                if (dist > 0.001f && dist < separationRadius)
-                    push += d / dist * (1f - dist / separationRadius);
+                if (other == this || other.IsFlying != IsFlying) continue;
+                float d = Position.x - other.Position.x;
+                if (Mathf.Abs(d) < 0.7f && Mathf.Abs(Position.y - other.Position.y) < 1f)
+                    push += (d >= 0f ? 1f : -1f) * (1f - Mathf.Abs(d) / 0.7f);
             }
             return push;
         }
+
+        // ---------------------------------------------------------------- ataque
 
         private void BeginAttack(PlayerController player)
         {
@@ -203,39 +235,38 @@ namespace HealingKnight.Gameplay.Enemies
 
             if (data.attackType == EnemyAttackType.Ranged)
             {
-                FireProjectile();
+                FireProjectile(player);
                 state = State.Recover;
-                timer = 0.35f;
+                timer = 0.4f;
                 attackCooldown = data.attackCooldown;
                 AttackTokens.Release(this);
                 return;
             }
 
-            // Embestida corta hacia el jugador.
             state = State.Attack;
             timer = 0.22f;
         }
 
-        private void UpdateAttack(PlayerController player, float dt)
+        private void UpdateAttack(PlayerController player)
         {
-            timer -= dt;
-            body.SetGroundVelocity(new Vector2(attackDirection * data.moveSpeed * 3.5f, 0f));
+            timer -= Time.deltaTime;
+            Move(new Vector2(attackDirection * data.moveSpeed * 3.5f, 0f));
 
             if (!attackLanded && player != null)
             {
-                Vector2 center = body.GroundPosition + new Vector2(attackDirection * 0.5f, 0f);
-                Hurtbox target = Hurtbox.QueryFirst(Team.Player, center, 0.5f, 0.8f, data.laneTolerance, body.GroundPosition.x);
-                if (target != null)
+                Rect area = HitMath.FromCenter(Position + new Vector2(attackDirection * 0.5f, 0.6f), new Vector2(0.9f, 1.2f));
+                Hurtbox playerBox = player.GetComponent<Hurtbox>();
+                if (playerBox != null && playerBox.IsAlive && playerBox.OverlapsRect(area))
                 {
-                    DamageInfo info = DamageInfo.Create(data.attackDamage, DamageKind.Contact, Team.Enemy, body.GroundPosition);
+                    DamageInfo info = DamageInfo.Create(data.attackDamage, DamageKind.Contact, Team.Enemy, Position);
                     info.knockback = data.attackKnockback;
-                    HitResult result = target.Damageable.ApplyDamage(info);
+                    HitResult result = playerBox.Damageable.ApplyDamage(info);
                     attackLanded = true;
 
                     if (result.outcome == HitOutcome.Blocked)
                     {
                         // Rebota contra el escudo.
-                        knockbackVelocity = -attackDirection * 5f;
+                        knockbackVelocity = -attackDirection * 6f;
                         state = State.Hurt;
                         timer = 0.35f;
                         attackCooldown = data.attackCooldown;
@@ -254,27 +285,32 @@ namespace HealingKnight.Gameplay.Enemies
             }
         }
 
-        private void FireProjectile()
+        private void FireProjectile(PlayerController player)
         {
-            if (projectilePool == null) return;
+            if (projectilePool == null || player == null) return;
+            Vector2 origin = Position + new Vector2(facing * 0.4f, IsFlying ? 0f : 0.8f);
+            Vector2 targetPoint = player.Position + new Vector2(0f, player.IsCrouching ? 0.5f : 1f);
+            Vector2 dir = IsFlying ? (targetPoint - origin).normalized : new Vector2(facing, 0f);
+
             Projectile p = projectilePool.Get();
             p.Launch(new ProjectileShot
             {
-                origin = body.GroundPosition + new Vector2(attackDirection * 0.5f, 0f),
-                height = body.Height + 0.9f,
-                direction = attackDirection,
+                origin = origin,
+                direction = dir,
                 speed = data.projectileSpeed,
                 range = data.projectileRange,
                 damage = data.attackDamage,
                 knockback = data.attackKnockback,
-                laneTolerance = data.laneTolerance,
-                halfWidth = 0.2f,
+                radius = 0.22f,
                 sourceTeam = Team.Enemy,
                 targetTeam = Team.Player,
                 medication = null,
-                color = data.projectileColor
+                color = data.projectileColor,
+                groundMask = groundMask
             }, finished => projectilePool.Release(finished));
         }
+
+        // ---------------------------------------------------------------- daño
 
         private void OnHit(DamageInfo info, HitResult result)
         {
@@ -283,10 +319,10 @@ namespace HealingKnight.Gameplay.Enemies
             health.SetTelegraph(false);
             AttackTokens.Release(this);
 
-            float dir = body.GroundPosition.x >= info.sourcePosition.x ? 1f : -1f;
+            float dir = Position.x >= info.sourcePosition.x ? 1f : -1f;
             knockbackVelocity = dir * info.knockback * (1f - data.knockbackResistance);
 
-            // Los enemigos pesados no se interrumpen con cada golpe.
+            // Los pesados no se interrumpen con cada golpe mientras preparan su ataque.
             if (data.knockbackResistance < 0.8f || state != State.Windup)
             {
                 state = State.Hurt;
@@ -297,7 +333,7 @@ namespace HealingKnight.Gameplay.Enemies
         private void OnDied(EnemyHealth _)
         {
             state = State.Dead;
-            body.SetGroundVelocity(Vector2.zero);
+            Move(Vector2.zero);
             AttackTokens.Release(this);
             enabled = false;
         }
@@ -307,7 +343,7 @@ namespace HealingKnight.Gameplay.Enemies
             state = State.Idle;
             health.SetTelegraph(false);
             AttackTokens.Release(this);
-            body.SetGroundVelocity(Vector2.zero);
+            Move(Vector2.zero);
         }
     }
 }

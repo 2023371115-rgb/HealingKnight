@@ -6,16 +6,14 @@ namespace HealingKnight.Gameplay.Hazards
 {
     /// <summary>
     /// Charco de ácido en el piso (GDD 5.12): daña cada cierto tiempo mientras lo pisas.
-    /// Se evita rodeándolo en profundidad o saltando por encima. El escudo no protege.
-    /// La zona es un rectángulo en el piso centrado en el objeto.
+    /// Se evita saltando por encima. El escudo no protege.
+    /// La zona es un rectángulo centrado en el objeto: dañan los pies del jugador dentro de él.
     /// </summary>
     public class AcidPool : MonoBehaviour
     {
-        [SerializeField] private Vector2 size = new Vector2(2.5f, 0.8f);
+        [SerializeField] private Vector2 size = new Vector2(2.5f, 0.4f);
         [SerializeField] private float damagePerTick = 5f;
         [SerializeField] private float tickInterval = 0.5f;
-        [Tooltip("Por encima de esta altura (saltando) no te daña.")]
-        [SerializeField] private float safeHeight = 0.2f;
 
         private float timer;
 
@@ -26,10 +24,10 @@ namespace HealingKnight.Gameplay.Hazards
             PlayerController player = PlayerController.Current;
             if (player == null || !player.Health.IsAlive) return;
 
-            Vector2 p = player.Body.GroundPosition;
+            Vector2 p = player.Position;
             Vector2 c = transform.position;
             bool inside = Mathf.Abs(p.x - c.x) <= size.x * 0.5f && Mathf.Abs(p.y - c.y) <= size.y * 0.5f
-                          && player.Body.Height <= safeHeight;
+                          && player.Motor.IsGrounded;
 
             if (!inside)
             {
