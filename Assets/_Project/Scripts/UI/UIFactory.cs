@@ -39,7 +39,7 @@ namespace HealingKnight.UI
 
         public static void EnsureEventSystem()
         {
-            if (EventSystem.current != null || UnityEngine.Object.FindFirstObjectByType<EventSystem>() != null) return;
+            if (EventSystem.current != null || UnityEngine.Object.FindAnyObjectByType<EventSystem>() != null) return;
 
             var go = new GameObject("EventSystem", typeof(EventSystem), typeof(InputSystemUIInputModule));
             go.GetComponent<InputSystemUIInputModule>().AssignDefaultActions();

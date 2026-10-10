@@ -7,7 +7,6 @@ using HealingKnight.UI;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
-using UnityEngine.Rendering.Universal;
 using UnityEngine.SceneManagement;
 
 namespace HealingKnight.EditorTools
@@ -93,10 +92,33 @@ namespace HealingKnight.EditorTools
             go.AddComponent<AudioListener>();
             if (gameplay) go.AddComponent<GameCamera>();
 
-            var light = new GameObject("Global Light 2D").AddComponent<Light2D>();
-            light.lightType = Light2D.LightType.Global;
-            light.intensity = 1f;
+            AddGlobalLight2D();
             return cam;
+        }
+
+        /// <summary>
+        /// Agrega una luz global 2D (URP). Se busca por nombre porque, según la versión de Unity,
+        /// Light2D vive en un assembly distinto; así no dependemos de cuál sea.
+        /// </summary>
+        private static void AddGlobalLight2D()
+        {
+            System.Type lightType = null;
+            foreach (var assembly in System.AppDomain.CurrentDomain.GetAssemblies())
+            {
+                lightType = assembly.GetType("UnityEngine.Rendering.Universal.Light2D");
+                if (lightType != null) break;
+            }
+            if (lightType == null) return;
+
+            var go = new GameObject("Global Light 2D");
+            Component light = go.AddComponent(lightType);
+
+            var typeProp = lightType.GetProperty("lightType");
+            if (typeProp != null && typeProp.CanWrite)
+                typeProp.SetValue(light, System.Enum.Parse(typeProp.PropertyType, "Global"));
+
+            var intensityProp = lightType.GetProperty("intensity");
+            if (intensityProp != null && intensityProp.CanWrite) intensityProp.SetValue(light, 1f);
         }
 
         private struct LevelStyle

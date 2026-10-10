@@ -4,8 +4,7 @@
     "references": [
         "HealingKnight.Core",
         "HealingKnight.Gameplay",
-        "HealingKnight.UI",
-        "Unity.RenderPipelines.Universal.Runtime"
+        "HealingKnight.UI"
     ],
     "includePlatforms": [
         "Editor"

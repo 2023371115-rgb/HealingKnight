@@ -46,7 +46,9 @@ namespace HealingKnight.Gameplay.Level
             Current = this;
             WalkableArea.SetLevelBounds(levelBounds);
             GameSession.RegisterActiveLevel(SceneManager.GetActiveScene().name);
+            #pragma warning disable CS0618 // La API cambia entre versiones de Unity 6; esta sigue funcionando.
             arenas.AddRange(FindObjectsByType<ArenaZone>(FindObjectsSortMode.None));
+#pragma warning restore CS0618
             arenas.Sort((a, b) => a.triggerX.CompareTo(b.triggerX));
             checkpointX = spawnPoint.x;
         }
@@ -61,7 +63,7 @@ namespace HealingKnight.Gameplay.Level
 
         private void Start()
         {
-            player = FindFirstObjectByType<PlayerController>();
+            player = FindAnyObjectByType<PlayerController>();
             if (player == null && playerPrefab != null)
                 player = Instantiate(playerPrefab, new Vector3(spawnPoint.x, spawnPoint.y, 0f), Quaternion.identity);
 
