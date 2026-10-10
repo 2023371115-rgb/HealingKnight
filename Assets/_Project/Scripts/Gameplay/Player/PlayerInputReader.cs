@@ -18,7 +18,7 @@ namespace HealingKnight.Gameplay.Player
     ///   Caída lenta                    mantener Espacio al caer     mantener A / LB
     ///   Bomba de medicamento           L / F                        B / RB
     ///   Fijar (quieto)                 U / Shift izq.               Clic del stick der.
-    ///   Medicamento anterior/siguiente Q / E                        — / Y
+    ///   Medicamento anterior/siguiente Q / E, rueda del mouse       — / Y
     ///   Medicamento directo            1 a 5                        —
     ///   Pausa                          Esc                          Start
     ///
@@ -29,7 +29,7 @@ namespace HealingKnight.Gameplay.Player
     {
         private InputActionMap map;
         private InputAction move, jump, shoot, aimLock, bomb, shield, prevMed, nextMed, pause;
-        private InputAction pointer, pointerDelta, aimStick, gamepadMove;
+        private InputAction pointer, pointerDelta, aimStick, gamepadMove, scroll;
         private bool mouseAim;
         private InputAction[] directMed;
 
@@ -110,6 +110,7 @@ namespace HealingKnight.Gameplay.Player
             pointerDelta = map.AddAction("PointerDelta", InputActionType.Value, "<Mouse>/delta");
             aimStick = map.AddAction("AimStick", InputActionType.Value, "<Gamepad>/rightStick");
             gamepadMove = map.AddAction("GamepadMove", InputActionType.Value, "<Gamepad>/leftStick");
+            scroll = map.AddAction("Scroll", InputActionType.Value, "<Mouse>/scroll");
 
             pause = map.AddAction("Pause", InputActionType.Button);
             pause.AddBinding("<Keyboard>/escape");
@@ -178,6 +179,13 @@ namespace HealingKnight.Gameplay.Player
             MedicationStep = 0;
             if (prevMed.WasPressedThisFrame()) MedicationStep = -1;
             else if (nextMed.WasPressedThisFrame()) MedicationStep = 1;
+            else
+            {
+                // Rueda del mouse: abajo = siguiente, arriba = anterior.
+                float wheel = scroll.ReadValue<Vector2>().y;
+                if (wheel < -0.1f) MedicationStep = 1;
+                else if (wheel > 0.1f) MedicationStep = -1;
+            }
 
             DirectMedicationIndex = -1;
             for (int i = 0; i < directMed.Length; i++)

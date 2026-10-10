@@ -35,7 +35,7 @@ Apuntas **libre con el mouse** (o el stick derecho del control). Si no usas el m
 | **Caída lenta**: mantén saltar mientras caes (1.5 s, se recarga al pisar el suelo) | mantener Espacio | mantener A / LB |
 | **Bomba de medicamento** (granada). Empiezas con 5; la barra bajo el contador se llena con daño efectivo, cuchillazos y parry, y al llenarse ganas otra (máx. 10) | L / F | B / RB |
 | **Fijar** (mantener): te quedas quieto para apuntar con calma | U / Shift izq. | Clic del stick der. |
-| Medicamento anterior / siguiente | Q / E | — / Y |
+| Medicamento anterior / siguiente | Rueda del mouse / Q / E | — / Y |
 | Medicamento directo | 1 a 5 | — |
 | Pausa | Esc | Start |
 
