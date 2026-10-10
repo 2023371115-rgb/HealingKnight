@@ -173,10 +173,35 @@ namespace HealingKnight.Gameplay.Player
                 motor.FallSpeedLimit = config.slowFallMaxSpeed;
             }
 
-            // Apuntar: arriba, diagonales (dos teclas), abajo solo en el aire. Fijado: 8 direcciones libres.
-            if (crouching) aim = new Vector2(motor.Facing, 0f);
-            else if (locked) aim = AimMath.ResolveLocked(move, motor.Facing, motor.IsGrounded);
-            else aim = AimMath.Resolve(move, motor.Facing, motor.IsGrounded);
+            // Apuntar.
+            //  - Mouse / stick derecho: libre en cualquier ángulo y miras hacia donde apuntas
+            //    (puedes correr hacia atrás disparando).
+            //  - Teclas: 8 direcciones como Metal Slug (arriba, diagonales con dos teclas, abajo en el aire).
+            switch (input.AimSource)
+            {
+                case AimSource.Mouse:
+                {
+                    UnityEngine.Camera cam = UnityEngine.Camera.main;
+                    Vector2 shoulder = Position + new Vector2(0f, crouching ? config.crouchMuzzleHeight : config.muzzleHeight);
+                    if (cam != null)
+                    {
+                        Vector3 sp = input.PointerScreenPosition;
+                        sp.z = -cam.transform.position.z;
+                        aim = AimMath.Toward(shoulder, cam.ScreenToWorldPoint(sp), motor.Facing);
+                    }
+                    break;
+                }
+                case AimSource.Stick:
+                    aim = input.AimStick;
+                    break;
+                default:
+                    if (crouching) aim = new Vector2(motor.Facing, 0f);
+                    else if (locked) aim = AimMath.ResolveLocked(move, motor.Facing, motor.IsGrounded);
+                    else aim = AimMath.Resolve(move, motor.Facing, motor.IsGrounded);
+                    break;
+            }
+            if (input.AimSource != AimSource.Directional && Mathf.Abs(aim.x) > 0.05f)
+                motor.SetFacing(aim.x > 0f ? 1 : -1);
 
             // Medicamentos.
             if (shooter != null)

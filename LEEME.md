@@ -19,20 +19,23 @@ Para probar mecánicas sin pasar por el menú, abre **Healing Knight → Abrir e
 
 Si cambia la estructura del proyecto base (nuevos enemigos, niveles, etc.) y todavía no has personalizado los assets generados, usa **Healing Knight → Regenerar proyecto base**: borra `Data`, `Prefabs`, `Scenes` y `Art/Placeholders` de `_Project` y los vuelve a crear.
 
-## Controles (copiados de Metal Slug)
+## Controles
 
-| Acción | Teclado | Gamepad |
+Apuntas **libre con el mouse** (o el stick derecho del control). Si no usas el mouse, apuntas en 8 direcciones como en Metal Slug: W arriba, W + A/D en diagonal, S abajo en el aire. Mover el mouse cambia al apuntado con mouse; presionar W regresa al de teclas.
+
+| Acción | Teclado / mouse | Gamepad |
 |---|---|---|
 | Moverse | A / D | Stick izq. / cruceta |
-| Apuntar arriba · **diagonal** (dos teclas a la vez) | W · W + A/D | Arriba · arriba + lado |
-| Agacharse (en el suelo) · apuntar abajo o diagonal abajo (en el aire) | S · S (+ A/D) | Abajo |
-| Disparar (mantener = ráfaga). Si un enemigo está pegado, **cuchillazo** automático. Disparar hacia abajo en el aire frena la caída | J | X |
-| **Fijar** (mantener): te quedas quieto y apuntas libre en 8 direcciones, como en Cuphead | U | Gatillo der. |
-| Saltar (altura fija) · **doble salto** en el aire | K / Espacio | A |
-| **Caída lenta**: mantén saltar mientras caes (1.5 s, se recarga al pisar el suelo) | mantener K / Espacio | mantener A |
-| **Bomba de medicamento** (granada). Empiezas con 5; la barra bajo el contador se llena con daño efectivo, cuchillazos y parry, y al llenarse ganas otra (máx. 10) | L | B |
-| Escudo burbuja (mantener) — levántalo justo antes del golpe para hacer **parry** | Shift izq. / I | Gatillo izq. |
-| Medicamento anterior / siguiente | Q / E | LB / RB |
+| Apuntar libre (miras hacia donde apuntas) | Mouse | Stick der. |
+| Apuntar en 8 direcciones | W, W + A/D, S en el aire | Stick izq. |
+| Agacharse | S | Abajo |
+| Disparar (mantener = ráfaga). Si un enemigo está pegado, **cuchillazo** automático. Disparar hacia abajo en el aire frena la caída | J / clic izquierdo | X / gatillo der. |
+| Escudo burbuja (mantener) — levántalo justo antes del golpe para hacer **parry** | K / clic derecho | Gatillo izq. |
+| Saltar (altura fija) · **doble salto** en el aire | Espacio | A / LB |
+| **Caída lenta**: mantén saltar mientras caes (1.5 s, se recarga al pisar el suelo) | mantener Espacio | mantener A / LB |
+| **Bomba de medicamento** (granada). Empiezas con 5; la barra bajo el contador se llena con daño efectivo, cuchillazos y parry, y al llenarse ganas otra (máx. 10) | L / F | B / RB |
+| **Fijar** (mantener): te quedas quieto para apuntar con calma | U / Shift izq. | Clic del stick der. |
+| Medicamento anterior / siguiente | Q / E | — / Y |
 | Medicamento directo | 1 a 5 | — |
 | Pausa | Esc | Start |
 
@@ -77,7 +80,7 @@ Cada carpeta de `Scripts` es un *assembly* (`.asmdef`): compila por separado y n
 - Las **plataformas** son de un solo sentido (`PlatformEffector2D`): se atraviesan saltando desde abajo.
 - Caer a un hueco cuesta vida y te regresa al último suelo seguro. Los enemigos que caen se eliminan.
 - El combate **no** usa colisiones de física: disparos, cuchillo y bombas buscan `Hurtbox` (rectángulos) con matemática simple (`HitMath`). Por eso agacharse esquiva disparos altos y salta por encima de la embestida de la lombriz.
-- Apuntado en 8 direcciones: `AimMath` (probado en `Tests/EditMode/Combat2DTests.cs`).
+- Apuntado: libre con mouse o stick derecho (`AimMath.Toward`) o en 8 direcciones con teclas (`AimMath.Resolve`). Probado en `Tests/EditMode/Combat2DTests.cs`.
 
 ## Cómo agregar contenido
 

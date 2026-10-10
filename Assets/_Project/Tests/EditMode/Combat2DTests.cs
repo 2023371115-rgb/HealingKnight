@@ -69,6 +69,13 @@ namespace HealingKnight.Tests
             AreEqual(new Vector2(Diag, Diag), AimMath.ResolveLocked(new Vector2(1f, 1f), 1, true));
         }
 
+        [Test]
+        public void ApuntadoLibre_HaciaElPunto()
+        {
+            AreEqual(new Vector2(0.6f, 0.8f), AimMath.Toward(new Vector2(1f, 1f), new Vector2(4f, 5f), 1));
+            AreEqual(new Vector2(-1f, 0f), AimMath.Toward(Vector2.zero, Vector2.zero, -1));
+        }
+
         // ---------------------------------------------------------------- salto
 
         [Test]

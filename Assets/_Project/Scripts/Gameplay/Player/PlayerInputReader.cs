@@ -4,28 +4,33 @@ using UnityEngine.InputSystem;
 namespace HealingKnight.Gameplay.Player
 {
     /// <summary>
-    /// Controles estilo Metal Slug (teclado y gamepad). Las acciones se crean aquí en código
+    /// Controles (teclado + mouse y gamepad). Las acciones se crean aquí en código
     /// para que se vean todos los controles en un solo lugar.
     ///
-    ///   Acción                         Teclado            Gamepad
-    ///   Mover                          A / D, flechas     Stick izq. / cruceta
-    ///   Apuntar arriba / diagonal      W  (+ A o D)       Arriba (+ lado)
-    ///   Agacharse / apuntar abajo*     S  (+ A o D)       Abajo (+ lado)      *abajo solo en el aire
-    ///   Disparar (mantener)            J                  X (oeste)
-    ///   Fijar (quieto, apuntar libre)  U (mantener)       Gatillo der.
-    ///   Saltar / doble salto           K / Espacio        A (sur)
-    ///   Caída lenta                    mantener saltar al caer
-    ///   Bomba de medicamento           L                  B (este)
-    ///   Escudo burbuja (mantener)      Shift izq. / I     Gatillo izq.
-    ///   Medicamento anterior/siguiente Q / E              LB / RB
-    ///   Medicamento directo            1 a 5              —
-    ///   Pausa                          Esc                Start
+    ///   Acción                         Teclado / mouse              Gamepad
+    ///   Mover                          A / D, flechas               Stick izq. / cruceta
+    ///   Apuntar libre                  MOVER EL MOUSE               Stick der.
+    ///   Apuntar en 8 direcciones*      W (+ A o D), S en el aire    Stick izq. (si no usas el der.)
+    ///   Agacharse                      S                            Abajo
+    ///   Disparar (mantener)            J / clic izquierdo           X / gatillo der.
+    ///   Escudo burbuja (mantener)      K / clic derecho             Gatillo izq.
+    ///   Saltar / doble salto           Espacio                      A / LB
+    ///   Caída lenta                    mantener Espacio al caer     mantener A / LB
+    ///   Bomba de medicamento           L / F                        B / RB
+    ///   Fijar (quieto)                 U / Shift izq.               Clic del stick der.
+    ///   Medicamento anterior/siguiente Q / E                        — / Y
+    ///   Medicamento directo            1 a 5                        —
+    ///   Pausa                          Esc                          Start
+    ///
+    ///   * Si mueves el mouse apuntas con el mouse; si presionas W vuelves a apuntar con teclas.
     /// </summary>
     [DefaultExecutionOrder(-100)]
     public class PlayerInputReader : MonoBehaviour
     {
         private InputActionMap map;
         private InputAction move, jump, shoot, aimLock, bomb, shield, prevMed, nextMed, pause;
+        private InputAction pointer, pointerDelta, aimStick, gamepadMove;
+        private bool mouseAim;
         private InputAction[] directMed;
 
         /// <summary>Dirección (incluye arriba/abajo para apuntar y agacharse).</summary>
@@ -41,6 +46,13 @@ namespace HealingKnight.Gameplay.Player
         public int MedicationStep { get; private set; }   // -1, 0 o 1
         public int DirectMedicationIndex { get; private set; } = -1;
         public bool PausePressed { get; private set; }
+
+        /// <summary>Cómo se está apuntando ahora mismo.</summary>
+        public AimSource AimSource { get; private set; } = AimSource.Directional;
+        /// <summary>Posición del mouse en pantalla (solo si AimSource = Mouse).</summary>
+        public Vector2 PointerScreenPosition { get; private set; }
+        /// <summary>Dirección del stick derecho (solo si AimSource = Stick).</summary>
+        public Vector2 AimStick { get; private set; }
 
         /// <summary>Para cinemáticas, pausa o muerte: el personaje ignora los controles.</summary>
         public bool Blocked { get; set; }
@@ -61,33 +73,43 @@ namespace HealingKnight.Gameplay.Player
 
             shoot = map.AddAction("Shoot", InputActionType.Button);
             shoot.AddBinding("<Keyboard>/j");
+            shoot.AddBinding("<Mouse>/leftButton");
             shoot.AddBinding("<Gamepad>/buttonWest");
+            shoot.AddBinding("<Gamepad>/rightTrigger");
 
             aimLock = map.AddAction("Lock", InputActionType.Button);
             aimLock.AddBinding("<Keyboard>/u");
-            aimLock.AddBinding("<Gamepad>/rightTrigger");
+            aimLock.AddBinding("<Keyboard>/leftShift");
+            aimLock.AddBinding("<Gamepad>/rightStickPress");
 
             jump = map.AddAction("Jump", InputActionType.Button);
-            jump.AddBinding("<Keyboard>/k");
             jump.AddBinding("<Keyboard>/space");
             jump.AddBinding("<Gamepad>/buttonSouth");
+            jump.AddBinding("<Gamepad>/leftShoulder");
 
             bomb = map.AddAction("Bomb", InputActionType.Button);
             bomb.AddBinding("<Keyboard>/l");
+            bomb.AddBinding("<Keyboard>/f");
             bomb.AddBinding("<Gamepad>/buttonEast");
+            bomb.AddBinding("<Gamepad>/rightShoulder");
 
             shield = map.AddAction("Shield", InputActionType.Button);
-            shield.AddBinding("<Keyboard>/leftShift");
-            shield.AddBinding("<Keyboard>/i");
+            shield.AddBinding("<Keyboard>/k");
+            shield.AddBinding("<Mouse>/rightButton");
             shield.AddBinding("<Gamepad>/leftTrigger");
 
             prevMed = map.AddAction("PrevMedication", InputActionType.Button);
             prevMed.AddBinding("<Keyboard>/q");
-            prevMed.AddBinding("<Gamepad>/leftShoulder");
 
             nextMed = map.AddAction("NextMedication", InputActionType.Button);
             nextMed.AddBinding("<Keyboard>/e");
-            nextMed.AddBinding("<Gamepad>/rightShoulder");
+            nextMed.AddBinding("<Gamepad>/buttonNorth");
+
+            // Apuntado libre.
+            pointer = map.AddAction("Pointer", InputActionType.Value, "<Mouse>/position");
+            pointerDelta = map.AddAction("PointerDelta", InputActionType.Value, "<Mouse>/delta");
+            aimStick = map.AddAction("AimStick", InputActionType.Value, "<Gamepad>/rightStick");
+            gamepadMove = map.AddAction("GamepadMove", InputActionType.Value, "<Gamepad>/leftStick");
 
             pause = map.AddAction("Pause", InputActionType.Button);
             pause.AddBinding("<Keyboard>/escape");
@@ -99,6 +121,28 @@ namespace HealingKnight.Gameplay.Player
                 directMed[i] = map.AddAction("Medication" + (i + 1), InputActionType.Button);
                 directMed[i].AddBinding("<Keyboard>/" + (i + 1));
             }
+        }
+
+        private void UpdateAimSource()
+        {
+            // Mover el mouse activa el apuntado con mouse; presionar arriba (W) o usar el stick
+            // izquierdo del control regresa al apuntado de 8 direcciones.
+            if (pointerDelta.ReadValue<Vector2>().sqrMagnitude > 4f) mouseAim = true;
+            else if (Move.y > 0.5f || gamepadMove.ReadValue<Vector2>().sqrMagnitude > 0.25f) mouseAim = false;
+
+            Vector2 stick = aimStick.ReadValue<Vector2>();
+            if (stick.sqrMagnitude > 0.3f)
+            {
+                mouseAim = false;
+                AimSource = AimSource.Stick;
+                AimStick = stick.normalized;
+            }
+            else if (mouseAim)
+            {
+                AimSource = AimSource.Mouse;
+                PointerScreenPosition = pointer.ReadValue<Vector2>();
+            }
+            else AimSource = AimSource.Directional;
         }
 
         private void OnEnable() => map?.Enable();
@@ -129,6 +173,7 @@ namespace HealingKnight.Gameplay.Player
             ShootHeld = shoot.IsPressed();
             BombPressed = bomb.WasPressedThisFrame();
             ShieldHeld = shield.IsPressed();
+            UpdateAimSource();
 
             MedicationStep = 0;
             if (prevMed.WasPressedThisFrame()) MedicationStep = -1;
@@ -144,5 +189,15 @@ namespace HealingKnight.Gameplay.Player
                 }
             }
         }
+    }
+
+    public enum AimSource
+    {
+        /// <summary>8 direcciones con W/A/S/D o el stick izquierdo (como Metal Slug).</summary>
+        Directional,
+        /// <summary>Libre hacia el mouse.</summary>
+        Mouse,
+        /// <summary>Libre con el stick derecho del control.</summary>
+        Stick
     }
 }

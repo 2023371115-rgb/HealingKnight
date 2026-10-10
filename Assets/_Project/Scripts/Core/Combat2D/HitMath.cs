@@ -69,6 +69,13 @@ namespace HealingKnight.Core.Combat2D
             return new Vector2(dirX, 0f);
         }
 
+        /// <summary>Apuntado libre (mouse o stick derecho): dirección del hombro al punto. Si está encima, hacia donde mira.</summary>
+        public static Vector2 Toward(Vector2 from, Vector2 to, int facing)
+        {
+            Vector2 d = to - from;
+            return d.sqrMagnitude < 0.0001f ? new Vector2(facing, 0f) : d.normalized;
+        }
+
         /// <summary>
         /// Con el botón de fijar (como en Cuphead): no te mueves y apuntas libre en 8 direcciones,
         /// incluso abajo en diagonal estando en el suelo. Recto abajo solo en el aire.
