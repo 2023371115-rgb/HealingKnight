@@ -122,7 +122,7 @@ namespace HealingKnight.UI
 
             // Controles (abajo, desaparece solo)
             controlsText = UIFactory.Text(root,
-                "Mover A/D · Apuntar W (W+A/D diagonal) · Agacharse S · Disparar J (cuchillo de cerca) · Saltar K/Espacio · Bomba L · Escudo Shift/I · Medicamento Q/E o 1-5 · Pausa Esc",
+                "Mover A/D · Apuntar W (W+A/D diagonal) · Agacharse S · Disparar J (cuchillo de cerca) · Saltar K/Espacio (2 veces = doble salto) · Bomba L · Escudo Shift/I · Medicamento Q/E o 1-5 · Pausa Esc",
                 24f, new Color(1f, 1f, 1f, 0.7f));
             UIFactory.Place(controlsText.rectTransform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 25f), new Vector2(1800f, 40f));
         }

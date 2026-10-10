@@ -27,7 +27,7 @@ Si cambia la estructura del proyecto base (nuevos enemigos, niveles, etc.) y tod
 | Apuntar arriba · **diagonal** (dos teclas a la vez) | W · W + A/D | Arriba · arriba + lado |
 | Agacharse (en el suelo) · apuntar abajo o diagonal abajo (en el aire) | S · S (+ A/D) | Abajo |
 | Disparar (mantener = ráfaga). Si un enemigo está pegado, **cuchillazo** automático | J | X |
-| Saltar (altura fija) | K / Espacio | A |
+| Saltar (altura fija) · **doble salto** en el aire | K / Espacio | A |
 | **Bomba de medicamento** (granada, cantidad limitada por nivel) | L | B |
 | Escudo burbuja (mantener) — levántalo justo antes del golpe para hacer **parry** | Shift izq. / I | Gatillo izq. |
 | Medicamento anterior / siguiente | Q / E | LB / RB |

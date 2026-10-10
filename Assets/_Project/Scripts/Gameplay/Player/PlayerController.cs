@@ -32,6 +32,7 @@ namespace HealingKnight.Gameplay.Player
         private State state = State.Normal;
         private float stateTimer;
         private bool crouching;
+        private int airJumpsUsed;
         private Vector2 aim = Vector2.right;
         private Vector2 lastSafePosition;
         private Vector3 bodyVisualBaseScale = Vector3.one;
@@ -39,6 +40,9 @@ namespace HealingKnight.Gameplay.Player
         /// <summary>El jugador actual (el juego es para un jugador).</summary>
         public static PlayerController Current { get; private set; }
         public static event Action<PlayerController> Spawned;
+
+        /// <summary>Al saltar. true = salto en el aire (para animación, sonido o partículas).</summary>
+        public event Action<bool> Jumped;
 
         public PlayerConfig Config => config;
         public CharacterMotor2D Motor => motor;
@@ -125,11 +129,22 @@ namespace HealingKnight.Gameplay.Player
             float vx = motor.IsGrounded ? target : Mathf.Lerp(motor.Velocity.x, target, config.airControl);
             motor.SetHorizontalVelocity(vx);
 
-            // Salto de altura fija.
-            if (input.JumpPressed && motor.IsGrounded && !shielding)
+            // Salto de altura fija + doble salto en el aire.
+            if (motor.IsGrounded) airJumpsUsed = 0;
+            if (input.JumpPressed && !shielding)
             {
-                SetCrouch(false);
-                motor.Jump(config.jumpHeight, config.timeToApex);
+                if (motor.IsGrounded)
+                {
+                    SetCrouch(false);
+                    motor.Jump(config.jumpHeight, config.timeToApex);
+                    Jumped?.Invoke(false);
+                }
+                else if (airJumpsUsed < config.airJumps)
+                {
+                    airJumpsUsed++;
+                    motor.Jump(config.airJumpHeight, config.airJumpTimeToApex);
+                    Jumped?.Invoke(true);
+                }
             }
 
             // Apuntar: arriba, diagonales (dos teclas), abajo solo en el aire.

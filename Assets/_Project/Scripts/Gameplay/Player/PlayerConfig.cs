@@ -21,6 +21,11 @@ namespace HealingKnight.Gameplay.Player
         [Header("Salto (altura fija)")]
         public float jumpHeight = 2.6f;
         public float timeToApex = 0.38f;
+        [Tooltip("Saltos extra en el aire (1 = doble salto, 0 = sin doble salto).")]
+        [Min(0)] public int airJumps = 1;
+        [Tooltip("Altura del salto en el aire (un poco menor que el normal).")]
+        public float airJumpHeight = 2f;
+        public float airJumpTimeToApex = 0.32f;
 
         [Header("Agacharse")]
         [Tooltip("Alto del cuerpo agachado respecto al normal.")]
