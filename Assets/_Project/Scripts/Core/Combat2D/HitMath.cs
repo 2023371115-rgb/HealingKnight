@@ -68,5 +68,23 @@ namespace HealingKnight.Core.Combat2D
             if (down && !grounded) return Vector2.down;
             return new Vector2(dirX, 0f);
         }
+
+        /// <summary>
+        /// Con el botón de fijar (como en Cuphead): no te mueves y apuntas libre en 8 direcciones,
+        /// incluso abajo en diagonal estando en el suelo. Recto abajo solo en el aire.
+        /// </summary>
+        public static Vector2 ResolveLocked(Vector2 input, int facing, bool grounded, float deadZone = 0.5f)
+        {
+            bool up = input.y > deadZone;
+            bool down = input.y < -deadZone;
+            bool side = Mathf.Abs(input.x) > deadZone;
+            int dirX = side ? (input.x > 0f ? 1 : -1) : facing;
+
+            if (up && side) return new Vector2(dirX, 1f).normalized;
+            if (up) return Vector2.up;
+            if (down && (side || grounded)) return new Vector2(dirX, -1f).normalized;
+            if (down) return Vector2.down;
+            return new Vector2(dirX, 0f);
+        }
     }
 }

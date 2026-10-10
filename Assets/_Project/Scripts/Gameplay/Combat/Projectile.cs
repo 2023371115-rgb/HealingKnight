@@ -46,6 +46,9 @@ namespace HealingKnight.Gameplay.Combat
 
         public static event Action<Projectile, HitResult> AnyHit;
 
+        /// <summary>De quién es el disparo (para cargar las bombas solo con disparos del jugador).</summary>
+        public Team SourceTeam => shot.sourceTeam;
+
         public void Launch(ProjectileShot data, Action<Projectile> finishedCallback)
         {
             shot = data;

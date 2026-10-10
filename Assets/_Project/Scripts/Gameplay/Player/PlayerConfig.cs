@@ -27,6 +27,19 @@ namespace HealingKnight.Gameplay.Player
         public float airJumpHeight = 2f;
         public float airJumpTimeToApex = 0.32f;
 
+        [Header("Caída lenta (mantener saltar mientras caes; como el prototipo)")]
+        [Tooltip("Segundos de planeo por cada vez que pisas el suelo.")]
+        public float slowFallDuration = 1.5f;
+        [Tooltip("Gravedad al planear (0.25 = cuatro veces más suave).")]
+        public float slowFallGravityScale = 0.25f;
+        public float slowFallMaxSpeed = 2.2f;
+        [Tooltip("Disparar hacia abajo en el aire frena un poco la caída (como el retroceso).")]
+        public float downShotMaxFallSpeed = 5f;
+
+        [Header("Fijar (botón de Cuphead: quieto y apuntando en 8 direcciones)")]
+        [Tooltip("Velocidad horizontal en el aire mientras fijas (0 = te quedas en tu X).")]
+        public float lockedAirSpeed = 0f;
+
         [Header("Agacharse")]
         [Tooltip("Alto del cuerpo agachado respecto al normal.")]
         [Range(0.3f, 1f)] public float crouchHeightFactor = 0.55f;
@@ -60,7 +73,13 @@ namespace HealingKnight.Gameplay.Player
         public float meleeKnockback = 5f;
 
         [Header("Bomba de medicamento (granada)")]
-        public int bombsPerLevel = 10;
+        [Tooltip("Bombas al empezar el nivel o al reaparecer.")]
+        public int bombsPerLevel = 5;
+        public int maxBombs = 10;
+        [Tooltip("Carga de bomba por punto de daño EFECTIVO hecho (como las cartas de Cuphead). 1/150 = una bomba cada 150 de daño.")]
+        public float bombChargePerDamage = 1f / 150f;
+        [Tooltip("Carga extra por cada parry con el escudo.")]
+        public float bombChargePerParry = 0.35f;
         public float bombDamage = 30f;
         public float bombBlastRadius = 1.8f;
         public Vector2 bombThrowVelocity = new Vector2(7f, 9f);

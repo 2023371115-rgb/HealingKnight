@@ -59,6 +59,16 @@ namespace HealingKnight.Tests
             AreEqual(new Vector2(1f, 0f), AimMath.Resolve(new Vector2(0.2f, 0.3f), 1, true));
         }
 
+        [Test]
+        public void Fijado_EnElSueloPuedeApuntarDiagonalAbajo()
+        {
+            AreEqual(new Vector2(Diag, -Diag), AimMath.ResolveLocked(new Vector2(1f, -1f), -1, true));
+            // Solo abajo en el suelo: diagonal hacia donde mira (recto abajo pegaría en el piso).
+            AreEqual(new Vector2(-Diag, -Diag), AimMath.ResolveLocked(new Vector2(0f, -1f), -1, true));
+            AreEqual(Vector2.down, AimMath.ResolveLocked(new Vector2(0f, -1f), 1, false));
+            AreEqual(new Vector2(Diag, Diag), AimMath.ResolveLocked(new Vector2(1f, 1f), 1, true));
+        }
+
         // ---------------------------------------------------------------- salto
 
         [Test]

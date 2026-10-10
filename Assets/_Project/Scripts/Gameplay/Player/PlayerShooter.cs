@@ -161,7 +161,8 @@ namespace HealingKnight.Gameplay.Player
             {
                 DamageInfo info = DamageInfo.Create(c.meleeDamage, DamageKind.Melee, Team.Player, motor.Position);
                 info.knockback = c.meleeKnockback;
-                h.Damageable.ApplyDamage(info);
+                HitResult result = h.Damageable.ApplyDamage(info);
+                if (result.Landed && controller.Bombs != null) controller.Bombs.OnMeleeDamage(result.damageDealt);
             }
 
             meleeCooldown = c.meleeCooldown;

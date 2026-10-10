@@ -26,9 +26,11 @@ Si cambia la estructura del proyecto base (nuevos enemigos, niveles, etc.) y tod
 | Moverse | A / D | Stick izq. / cruceta |
 | Apuntar arriba · **diagonal** (dos teclas a la vez) | W · W + A/D | Arriba · arriba + lado |
 | Agacharse (en el suelo) · apuntar abajo o diagonal abajo (en el aire) | S · S (+ A/D) | Abajo |
-| Disparar (mantener = ráfaga). Si un enemigo está pegado, **cuchillazo** automático | J | X |
+| Disparar (mantener = ráfaga). Si un enemigo está pegado, **cuchillazo** automático. Disparar hacia abajo en el aire frena la caída | J | X |
+| **Fijar** (mantener): te quedas quieto y apuntas libre en 8 direcciones, como en Cuphead | U | Gatillo der. |
 | Saltar (altura fija) · **doble salto** en el aire | K / Espacio | A |
-| **Bomba de medicamento** (granada, cantidad limitada por nivel) | L | B |
+| **Caída lenta**: mantén saltar mientras caes (1.5 s, se recarga al pisar el suelo) | mantener K / Espacio | mantener A |
+| **Bomba de medicamento** (granada). Empiezas con 5; la barra bajo el contador se llena con daño efectivo, cuchillazos y parry, y al llenarse ganas otra (máx. 10) | L | B |
 | Escudo burbuja (mantener) — levántalo justo antes del golpe para hacer **parry** | Shift izq. / I | Gatillo izq. |
 | Medicamento anterior / siguiente | Q / E | LB / RB |
 | Medicamento directo | 1 a 5 | — |

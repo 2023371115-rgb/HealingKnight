@@ -33,6 +33,9 @@ namespace HealingKnight.Gameplay.Player
         private float stateTimer;
         private bool crouching;
         private int airJumpsUsed;
+        private float slowFallLeft;
+        private bool slowFalling;
+        private bool locked;
         private Vector2 aim = Vector2.right;
         private Vector2 lastSafePosition;
         private Vector3 bodyVisualBaseScale = Vector3.one;
@@ -53,6 +56,12 @@ namespace HealingKnight.Gameplay.Player
         public PlayerHealth Health => health;
         public State CurrentState => state;
         public bool IsCrouching => crouching;
+        /// <summary>Planeando con caída lenta.</summary>
+        public bool IsSlowFalling => slowFalling;
+        /// <summary>Fijado en su lugar (botón de Cuphead).</summary>
+        public bool IsLocked => locked;
+        /// <summary>Segundos de caída lenta que quedan (0..slowFallDuration).</summary>
+        public float SlowFallLeft => slowFallLeft;
         public Vector2 Aim => aim;
         public Vector2 Position => motor.Position;
 
@@ -96,6 +105,12 @@ namespace HealingKnight.Gameplay.Player
             float dt = Time.deltaTime;
             if (dt <= 0f || config == null) return;
 
+            // La caída lenta se decide cada cuadro en UpdateNormal; fuera de él la gravedad es normal.
+            motor.FallGravityScale = 1f;
+            motor.FallSpeedLimit = 0f;
+            slowFalling = false;
+            if (motor.IsGrounded) slowFallLeft = config.slowFallDuration;
+
             switch (state)
             {
                 case State.Normal: UpdateNormal(); break;
@@ -115,16 +130,18 @@ namespace HealingKnight.Gameplay.Player
         {
             Vector2 move = input.Move;
             bool shielding = shield != null && shield.IsActive;
+            locked = input.LockHeld && !shielding;
 
-            // Agacharse (solo en el suelo).
-            SetCrouch(motor.IsGrounded && move.y < -0.5f && !shielding);
+            // Agacharse (solo en el suelo y sin fijar: fijado, S apunta en diagonal abajo).
+            SetCrouch(motor.IsGrounded && move.y < -0.5f && !shielding && !locked);
 
             // Hacia dónde mira.
             if (Mathf.Abs(move.x) > 0.3f) motor.SetFacing(move.x > 0f ? 1 : -1);
 
-            // Correr: velocidad constante, sin inercia (como Metal Slug).
+            // Correr: velocidad constante, sin inercia (como Metal Slug). Fijado no se mueve.
             float speed = crouching ? config.crouchSpeed : config.runSpeed;
             if (shielding) speed *= config.shieldMoveSpeedMultiplier;
+            if (locked) speed = motor.IsGrounded ? 0f : config.lockedAirSpeed;
             float target = Mathf.Abs(move.x) > 0.3f ? Mathf.Sign(move.x) * speed : 0f;
             float vx = motor.IsGrounded ? target : Mathf.Lerp(motor.Velocity.x, target, config.airControl);
             motor.SetHorizontalVelocity(vx);
@@ -147,8 +164,19 @@ namespace HealingKnight.Gameplay.Player
                 }
             }
 
-            // Apuntar: arriba, diagonales (dos teclas), abajo solo en el aire.
-            aim = crouching ? new Vector2(motor.Facing, 0f) : AimMath.Resolve(move, motor.Facing, motor.IsGrounded);
+            // Caída lenta: mantener saltar mientras caes (se recarga al pisar el suelo).
+            if (!motor.IsGrounded && motor.Velocity.y < 0f && input.JumpHeld && !shielding && slowFallLeft > 0f)
+            {
+                slowFalling = true;
+                slowFallLeft -= Time.deltaTime;
+                motor.FallGravityScale = config.slowFallGravityScale;
+                motor.FallSpeedLimit = config.slowFallMaxSpeed;
+            }
+
+            // Apuntar: arriba, diagonales (dos teclas), abajo solo en el aire. Fijado: 8 direcciones libres.
+            if (crouching) aim = new Vector2(motor.Facing, 0f);
+            else if (locked) aim = AimMath.ResolveLocked(move, motor.Facing, motor.IsGrounded);
+            else aim = AimMath.Resolve(move, motor.Facing, motor.IsGrounded);
 
             // Medicamentos.
             if (shooter != null)
@@ -164,7 +192,13 @@ namespace HealingKnight.Gameplay.Player
 
             // Disparo (o cuchillazo automático si hay un enemigo pegado).
             if (shooter != null && (input.ShootPressed || input.ShootHeld))
+            {
                 shooter.TryAttack(aim, crouching, input.ShootPressed);
+
+                // Disparar hacia abajo en el aire frena la caída (como un pequeño retroceso).
+                if (!motor.IsGrounded && aim.y < -0.5f && !slowFalling)
+                    motor.FallSpeedLimit = config.downShotMaxFallSpeed;
+            }
 
             // Bomba de medicamento.
             if (bombs != null && input.BombPressed) bombs.TryThrow();

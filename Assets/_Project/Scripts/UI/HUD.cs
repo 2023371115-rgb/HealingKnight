@@ -24,6 +24,7 @@ namespace HealingKnight.UI
         private TextMeshProUGUI levelText;
         private TextMeshProUGUI controlsText;
         private TextMeshProUGUI bombsText;
+        private UIBar bombChargeBar;
         private GameObject bossRoot;
         private UIBar bossBar;
         private TextMeshProUGUI bossNameText;
@@ -91,6 +92,9 @@ namespace HealingKnight.UI
             // Bombas de medicamento (como el contador de granadas de Metal Slug)
             bombsText = UIFactory.Text(panel.transform, "BOMBAS 0", 24f, new Color(1f, 0.85f, 0.4f), TextAlignmentOptions.Right);
             UIFactory.Place(bombsText.rectTransform, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(390f, -86f), new Vector2(150f, 34f));
+            // Barra de la siguiente bomba: se llena pegando con el medicamento correcto y con parry.
+            bombChargeBar = UIFactory.Bar(panel.transform, "BombCharge", new Color(1f, 0.85f, 0.4f), new Vector2(150f, 10f));
+            UIFactory.Place((RectTransform)bombChargeBar.transform, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(390f, -122f), new Vector2(150f, 10f));
 
             medicationSwatch = UIFactory.Panel(panel.transform, "MedicationSwatch", Color.white);
             UIFactory.Place(medicationSwatch.rectTransform, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(20f, -122f), new Vector2(34f, 34f));
@@ -122,7 +126,7 @@ namespace HealingKnight.UI
 
             // Controles (abajo, desaparece solo)
             controlsText = UIFactory.Text(root,
-                "Mover A/D · Apuntar W (W+A/D diagonal) · Agacharse S · Disparar J (cuchillo de cerca) · Saltar K/Espacio (2 veces = doble salto) · Bomba L · Escudo Shift/I · Medicamento Q/E o 1-5 · Pausa Esc",
+                "Mover A/D · Apuntar W (W+A/D diagonal) · Agacharse S · Disparar J (cuchillo de cerca) · Fijar U · Saltar K/Espacio (2 veces = doble salto, mantener = caída lenta) · Bomba L · Escudo Shift/I · Medicamento Q/E o 1-5 · Pausa Esc",
                 24f, new Color(1f, 1f, 1f, 0.7f));
             UIFactory.Place(controlsText.rectTransform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 25f), new Vector2(1800f, 40f));
         }
@@ -137,11 +141,13 @@ namespace HealingKnight.UI
             if (player.Shield != null) player.Shield.EnergyChanged += OnShieldChanged;
             if (player.Shooter != null) player.Shooter.MedicationChanged += OnMedicationChanged;
             if (player.Bombs != null) player.Bombs.CountChanged += OnBombsChanged;
+            if (player.Bombs != null) player.Bombs.ChargeChanged += OnBombChargeChanged;
 
             healthBar.SetValue(player.Health.Health01, true);
             if (player.Shield != null) shieldBar.SetValue(player.Shield.Energy01, true);
             if (player.Shooter != null) OnMedicationChanged(player.Shooter.Current);
             if (player.Bombs != null) OnBombsChanged(player.Bombs.Count);
+            if (player.Bombs != null) bombChargeBar.SetValue(player.Bombs.Charge01, true);
         }
 
         private void Unbind()
@@ -151,6 +157,7 @@ namespace HealingKnight.UI
             if (player.Shield != null) player.Shield.EnergyChanged -= OnShieldChanged;
             if (player.Shooter != null) player.Shooter.MedicationChanged -= OnMedicationChanged;
             if (player.Bombs != null) player.Bombs.CountChanged -= OnBombsChanged;
+            if (player.Bombs != null) player.Bombs.ChargeChanged -= OnBombChargeChanged;
             player = null;
         }
 
@@ -159,6 +166,8 @@ namespace HealingKnight.UI
         private void OnShieldChanged(float value01) => shieldBar.SetValue(value01);
 
         private void OnBombsChanged(int count) => bombsText.text = $"BOMBAS {count}";
+
+        private void OnBombChargeChanged(float value01) => bombChargeBar.SetValue(value01);
 
         private void OnMedicationChanged(MedicationData med)
         {

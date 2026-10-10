@@ -12,7 +12,9 @@ namespace HealingKnight.Gameplay.Player
     ///   Apuntar arriba / diagonal      W  (+ A o D)       Arriba (+ lado)
     ///   Agacharse / apuntar abajo*     S  (+ A o D)       Abajo (+ lado)      *abajo solo en el aire
     ///   Disparar (mantener)            J                  X (oeste)
-    ///   Saltar                         K / Espacio        A (sur)
+    ///   Fijar (quieto, apuntar libre)  U (mantener)       Gatillo der.
+    ///   Saltar / doble salto           K / Espacio        A (sur)
+    ///   Caída lenta                    mantener saltar al caer
     ///   Bomba de medicamento           L                  B (este)
     ///   Escudo burbuja (mantener)      Shift izq. / I     Gatillo izq.
     ///   Medicamento anterior/siguiente Q / E              LB / RB
@@ -23,11 +25,14 @@ namespace HealingKnight.Gameplay.Player
     public class PlayerInputReader : MonoBehaviour
     {
         private InputActionMap map;
-        private InputAction move, jump, shoot, bomb, shield, prevMed, nextMed, pause;
+        private InputAction move, jump, shoot, aimLock, bomb, shield, prevMed, nextMed, pause;
         private InputAction[] directMed;
 
         /// <summary>Dirección (incluye arriba/abajo para apuntar y agacharse).</summary>
         public Vector2 Move { get; private set; }
+        public bool JumpHeld { get; private set; }
+        /// <summary>Botón de fijar: quieto y apuntando en 8 direcciones.</summary>
+        public bool LockHeld { get; private set; }
         public bool JumpPressed { get; private set; }
         public bool ShootPressed { get; private set; }
         public bool ShootHeld { get; private set; }
@@ -57,7 +62,10 @@ namespace HealingKnight.Gameplay.Player
             shoot = map.AddAction("Shoot", InputActionType.Button);
             shoot.AddBinding("<Keyboard>/j");
             shoot.AddBinding("<Gamepad>/buttonWest");
-            shoot.AddBinding("<Gamepad>/rightTrigger");
+
+            aimLock = map.AddAction("Lock", InputActionType.Button);
+            aimLock.AddBinding("<Keyboard>/u");
+            aimLock.AddBinding("<Gamepad>/rightTrigger");
 
             jump = map.AddAction("Jump", InputActionType.Button);
             jump.AddBinding("<Keyboard>/k");
@@ -105,6 +113,7 @@ namespace HealingKnight.Gameplay.Player
             if (Blocked)
             {
                 Move = Vector2.zero;
+                JumpHeld = LockHeld = false;
                 JumpPressed = ShootPressed = ShootHeld = BombPressed = ShieldHeld = false;
                 MedicationStep = 0;
                 DirectMedicationIndex = -1;
@@ -114,6 +123,8 @@ namespace HealingKnight.Gameplay.Player
             Vector2 m = move.ReadValue<Vector2>();
             Move = m.sqrMagnitude > 1f ? m.normalized : m;
             JumpPressed = jump.WasPressedThisFrame();
+            JumpHeld = jump.IsPressed();
+            LockHeld = aimLock.IsPressed();
             ShootPressed = shoot.WasPressedThisFrame();
             ShootHeld = shoot.IsPressed();
             BombPressed = bomb.WasPressedThisFrame();
