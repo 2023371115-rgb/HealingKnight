@@ -1,5 +1,6 @@
 using HealingKnight.Core.Combat;
 using HealingKnight.Core.Flow;
+using HealingKnight.Gameplay.Enemies;
 using HealingKnight.Gameplay.Level;
 using HealingKnight.Gameplay.Player;
 using TMPro;
@@ -22,6 +23,10 @@ namespace HealingKnight.UI
         private TextMeshProUGUI goText;
         private TextMeshProUGUI levelText;
         private TextMeshProUGUI controlsText;
+        private GameObject bossRoot;
+        private UIBar bossBar;
+        private TextMeshProUGUI bossNameText;
+        private EnemyHealth boss;
 
         private PlayerController player;
         private float messageTimer;
@@ -39,6 +44,8 @@ namespace HealingKnight.UI
             GameplayEvents.Message += ShowMessage;
             GameplayEvents.ArenaCleared += OnArenaCleared;
             GameplayEvents.ArenaStarted += OnArenaStarted;
+            GameplayEvents.BossStarted += OnBossStarted;
+            GameplayEvents.BossEnded += OnBossEnded;
             if (PlayerController.Current != null) Bind(PlayerController.Current);
         }
 
@@ -48,6 +55,8 @@ namespace HealingKnight.UI
             GameplayEvents.Message -= ShowMessage;
             GameplayEvents.ArenaCleared -= OnArenaCleared;
             GameplayEvents.ArenaStarted -= OnArenaStarted;
+            GameplayEvents.BossStarted -= OnBossStarted;
+            GameplayEvents.BossEnded -= OnBossEnded;
             Unbind();
         }
 
@@ -95,6 +104,16 @@ namespace HealingKnight.UI
             goText = UIFactory.Text(root, "¡AVANZA!  →", 64f, new Color(1f, 0.85f, 0.2f), TextAlignmentOptions.Right);
             UIFactory.Place(goText.rectTransform, new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(-60f, 120f), new Vector2(700f, 100f));
             goText.gameObject.SetActive(false);
+
+            // Barra del jefe (abajo al centro)
+            Image bossPanel = UIFactory.Panel(root, "BossPanel", new Color(0f, 0f, 0f, 0.45f));
+            UIFactory.Place(bossPanel.rectTransform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 80f), new Vector2(1100f, 90f));
+            bossRoot = bossPanel.gameObject;
+            bossNameText = UIFactory.Text(bossPanel.transform, "", 30f, new Color(1f, 0.8f, 0.6f));
+            UIFactory.Place(bossNameText.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -4f), new Vector2(1000f, 36f));
+            bossBar = UIFactory.Bar(bossPanel.transform, "BossHealth", new Color(0.95f, 0.45f, 0.2f), new Vector2(1060f, 30f));
+            UIFactory.Place((RectTransform)bossBar.transform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 12f), new Vector2(1060f, 30f));
+            bossRoot.SetActive(false);
 
             // Controles (abajo, desaparece solo)
             controlsText = UIFactory.Text(root,
@@ -152,6 +171,20 @@ namespace HealingKnight.UI
             messageTimer = 3f;
         }
 
+        private void OnBossStarted(string bossName, EnemyHealth health)
+        {
+            boss = health;
+            bossNameText.text = bossName;
+            bossBar.SetValue(1f, true);
+            bossRoot.SetActive(true);
+        }
+
+        private void OnBossEnded()
+        {
+            boss = null;
+            bossRoot.SetActive(false);
+        }
+
         private void OnArenaStarted(ArenaZone arena)
         {
             goText.gameObject.SetActive(false);
@@ -166,6 +199,8 @@ namespace HealingKnight.UI
         private void Update()
         {
             float dt = Time.unscaledDeltaTime;
+
+            if (boss != null) bossBar.SetValue(boss.Health01);
 
             if (messageTimer > 0f)
             {

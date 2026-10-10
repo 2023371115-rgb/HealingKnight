@@ -59,6 +59,33 @@ namespace HealingKnight.EditorTools
             so.ApplyModifiedPropertiesWithoutUndo();
         }
 
+        public static void SetBool(Object target, string field, bool value)
+        {
+            var so = new SerializedObject(target);
+            SerializedProperty p = Find(so, field);
+            if (p == null) return;
+            p.boolValue = value;
+            so.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        public static void SetInt(Object target, string field, int value)
+        {
+            var so = new SerializedObject(target);
+            SerializedProperty p = Find(so, field);
+            if (p == null) return;
+            p.intValue = value;
+            so.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        public static void SetColor(Object target, string field, Color value)
+        {
+            var so = new SerializedObject(target);
+            SerializedProperty p = Find(so, field);
+            if (p == null) return;
+            p.colorValue = value;
+            so.ApplyModifiedPropertiesWithoutUndo();
+        }
+
         public static void SetString(Object target, string field, string value)
         {
             var so = new SerializedObject(target);

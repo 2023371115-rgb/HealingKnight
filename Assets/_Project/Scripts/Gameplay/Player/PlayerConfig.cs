@@ -64,6 +64,10 @@ namespace HealingKnight.Gameplay.Player
         public float shieldRegenPerSecond = 15f;
         public float shieldBreakCooldown = 2.5f;
         [Range(0.1f, 1f)] public float shieldMoveSpeedMultiplier = 0.5f;
+        [Tooltip("Ángulo que cubre el escudo hacia donde miras. 360 = bloquea por todos lados.")]
+        [Range(30f, 360f)] public float shieldArcDegrees = 120f;
+        [Tooltip("Parry: si el golpe llega en estos primeros segundos después de levantar el escudo, no gasta energía y recarga el disparo.")]
+        public float parryWindow = 0.2f;
 
         [Header("Medicamentos genéricos (la cápsula regional la agrega el sistema)")]
         public List<MedicationData> genericMedications = new List<MedicationData>();

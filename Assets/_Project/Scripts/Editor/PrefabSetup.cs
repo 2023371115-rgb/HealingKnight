@@ -1,6 +1,7 @@
 using HealingKnight.Gameplay.Combat;
 using HealingKnight.Gameplay.Enemies;
 using HealingKnight.Gameplay.Hazards;
+using HealingKnight.Gameplay.Level;
 using HealingKnight.Gameplay.Movement;
 using HealingKnight.Gameplay.Player;
 using UnityEditor;
@@ -19,8 +20,10 @@ namespace HealingKnight.EditorTools
 
         public Projectile Capsule, EnemyProjectile;
         public PlayerController Player;
-        public EnemyHealth Parasito, ParasitoGrande, Bacteria, Rotavirus;
+        public EnemyHealth HPylori, Giardia, Rotavirus, Entamoeba, CDifficile, Oxiuro, SMutans;
+        public EnemyHealth LombrizDelgado, LombrizGrueso;
         public AcidPool Acid;
+        public SecretPassage Secret;
 
         private readonly DataSetup data;
 
@@ -35,12 +38,31 @@ namespace HealingKnight.EditorTools
             EnemyProjectile = LoadOrBuild<Projectile>($"{Folder}/Projectiles/EnemyProjectile.prefab", () => BuildProjectile("EnemyProjectile", new Vector2(0.4f, 0.4f)));
             Player = LoadOrBuild<PlayerController>($"{Folder}/Player/HealingKnight.prefab", BuildPlayer);
 
-            Parasito = LoadOrBuild<EnemyHealth>($"{Folder}/Enemies/Parasito.prefab", () => BuildEnemy("Parasito", data.Parasito, EnemyShape.Long));
-            ParasitoGrande = LoadOrBuild<EnemyHealth>($"{Folder}/Enemies/ParasitoGrande.prefab", () => BuildEnemy("ParasitoGrande", data.ParasitoGrande, EnemyShape.Long));
-            Bacteria = LoadOrBuild<EnemyHealth>($"{Folder}/Enemies/Bacteria_HPylori.prefab", () => BuildEnemy("Bacteria_HPylori", data.Bacteria, EnemyShape.Capsule));
-            Rotavirus = LoadOrBuild<EnemyHealth>($"{Folder}/Enemies/Rotavirus.prefab", () => BuildEnemy("Rotavirus", data.Rotavirus, EnemyShape.Round));
+            HPylori = Enemy("Bacteria_HPylori", data.HPylori, EnemyShape.Capsule);
+            Giardia = Enemy("Parasito_Giardia", data.Giardia, EnemyShape.Pear);
+            Rotavirus = Enemy("Virus_Rotavirus", data.Rotavirus, EnemyShape.Round);
+            Entamoeba = Enemy("Parasito_Entamoeba", data.Entamoeba, EnemyShape.Blob);
+            CDifficile = Enemy("Bacteria_CDifficile", data.CDifficile, EnemyShape.Capsule);
+            Oxiuro = Enemy("Parasito_Oxiuro", data.Oxiuro, EnemyShape.Long);
+            SMutans = Enemy("Bacteria_SMutans", data.SMutans, EnemyShape.Blob);
+
+            LombrizDelgado = LoadOrBuild<EnemyHealth>($"{Folder}/Bosses/Lombriz_IntestinoDelgado.prefab",
+                () => BuildLombriz("Lombriz_IntestinoDelgado", 0.5f, null, null,
+                    "¡LA LOMBRIZ! Usa Antiparasitario. Esquívala cambiando de profundidad.",
+                    "NODO: ¡Escapa hacia el intestino grueso! Síguela."));
+            LombrizGrueso = LoadOrBuild<EnemyHealth>($"{Folder}/Bosses/Lombriz_IntestinoGrueso.prefab",
+                () => BuildLombriz("Lombriz_IntestinoGrueso", 0f, Oxiuro, data.Oxiuro,
+                    "NODO: Aquí se esconde. Acaba con ella.",
+                    "NODO: Foco eliminado. Fórmula 1 obtenida."));
+
+            Secret = LoadOrBuild<SecretPassage>($"{Folder}/Level/SecretPassage.prefab", BuildSecret);
 
             Acid = LoadOrBuild<AcidPool>($"{Folder}/Hazards/AcidPool.prefab", BuildAcid);
+        }
+
+        private EnemyHealth Enemy(string name, EnemyData enemyData, EnemyShape shape)
+        {
+            return LoadOrBuild<EnemyHealth>($"{Folder}/Enemies/{name}.prefab", () => BuildEnemy(name, enemyData, shape));
         }
 
         private static T LoadOrBuild<T>(string path, System.Func<GameObject> build) where T : Component
@@ -91,8 +113,9 @@ namespace HealingKnight.EditorTools
             SetupUtils.SpriteChild(v, "Visor", PlaceholderArt.SquareCentered, new Color(0.3f, 0.9f, 1f), new Vector3(0.22f, 1.48f, 0f), new Vector2(0.55f, 0.14f), 4);
             SpriteRenderer arm = SetupUtils.SpriteChild(v, "ArmCannon", PlaceholderArt.Capsule, Color.white, new Vector3(0.45f, 0.82f, 0f), new Vector2(0.8f, 0.32f), 5);
 
-            SpriteRenderer shieldSprite = SetupUtils.SpriteChild(v, "Shield", PlaceholderArt.Circle, new Color(0.4f, 0.9f, 1f, 0.7f),
-                new Vector3(0.6f, 0.75f, 0f), new Vector2(0.5f, 1.3f), 6);
+            // Escudo burbuja (diseño del prototipo): rodea todo el cuerpo.
+            SpriteRenderer shieldSprite = SetupUtils.SpriteChild(v, "ShieldBubble", PlaceholderArt.Circle, new Color(0.03f, 0.91f, 0.95f, 0.45f),
+                new Vector3(0.05f, 0.95f, 0f), new Vector2(2.1f, 2.1f), 8);
 
             var body = root.AddComponent<DepthBody>();
             SetupUtils.SetRef(body, "visual", v);
@@ -123,7 +146,7 @@ namespace HealingKnight.EditorTools
 
         // ---------- Enemigos ----------
 
-        private enum EnemyShape { Long, Capsule, Round }
+        private enum EnemyShape { Long, Capsule, Round, Blob, Pear }
 
         private GameObject BuildEnemy(string name, EnemyData enemyData, EnemyShape shape)
         {
@@ -149,6 +172,20 @@ namespace HealingKnight.EditorTools
                     bodySprite = SetupUtils.SpriteChild(visual.transform, "Body", PlaceholderArt.Capsule, enemyData.tint,
                         new Vector3(0f, 0.4f * s, 0f), new Vector2(1.1f * s, 0.55f * s), 0);
                     bodyHeight = 0.9f * s;
+                    break;
+                case EnemyShape.Blob: // ameba / colonia: mancha pegada al piso
+                    bodySprite = SetupUtils.SpriteChild(visual.transform, "Body", PlaceholderArt.CircleBottom, enemyData.tint,
+                        Vector3.zero, new Vector2(1.1f * s, 0.85f * s), 0);
+                    SetupUtils.SpriteChild(visual.transform, "Lobe", PlaceholderArt.CircleBottom, Color.Lerp(enemyData.tint, Color.white, 0.2f),
+                        new Vector3(-0.35f * s, 0f, 0f), new Vector2(0.6f * s, 0.55f * s), -1);
+                    bodyHeight = 0.85f * s;
+                    break;
+                case EnemyShape.Pear: // giardia: forma de pera con "ojos"
+                    bodySprite = SetupUtils.SpriteChild(visual.transform, "Body", PlaceholderArt.CircleBottom, enemyData.tint,
+                        new Vector3(0f, 0.2f * s, 0f), new Vector2(0.9f * s, 1.0f * s), 0);
+                    SetupUtils.SpriteChild(visual.transform, "Tail", PlaceholderArt.Capsule, Color.Lerp(enemyData.tint, Color.black, 0.15f),
+                        new Vector3(-0.45f * s, 0.35f * s, 0f), new Vector2(0.6f * s, 0.18f * s), -1);
+                    bodyHeight = 1.2f * s;
                     break;
                 default: // virus: esfera flotante
                     bodySprite = SetupUtils.SpriteChild(visual.transform, "Body", PlaceholderArt.Circle, enemyData.tint,
@@ -178,6 +215,69 @@ namespace HealingKnight.EditorTools
             SetupUtils.SetFloat(hurtbox, "halfWidth", 0.5f * s);
             SetupUtils.SetFloat(hurtbox, "bodyHeight", bodyHeight + (shape == EnemyShape.Round ? 0.5f : 0.3f));
 
+            return root;
+        }
+
+        // ---------- Jefe lombriz ----------
+
+        private GameObject BuildLombriz(string name, float fleeAt, EnemyHealth minionPrefab, EnemyData minionData,
+            string intro, string endMessage)
+        {
+            EnemyData d = data.Lombriz;
+            var root = new GameObject(name);
+            root.AddComponent<SortingGroup>();
+
+            GameObject visual = SetupUtils.Child(root.transform, "Visual", Vector3.zero);
+            SpriteRenderer head = SetupUtils.SpriteChild(visual.transform, "Head", PlaceholderArt.Circle, d.tint,
+                Vector3.zero, new Vector2(1.4f, 1.3f), 2);
+            SetupUtils.SpriteChild(visual.transform, "Mouth", PlaceholderArt.Circle, new Color(0.35f, 0.08f, 0.12f),
+                new Vector3(0.5f, -0.05f, 0f), new Vector2(0.45f, 0.55f), 3);
+            SetupUtils.SpriteChild(visual.transform, "Eye", PlaceholderArt.Circle, Color.black,
+                new Vector3(0.2f, 0.35f, 0f), new Vector2(0.22f, 0.22f), 4);
+
+            SpriteRenderer mound = SetupUtils.SpriteChild(root.transform, "Mound", PlaceholderArt.Circle, new Color(0.45f, 0.25f, 0.2f, 0.9f),
+                Vector3.zero, new Vector2(1.8f, 0.5f), -20);
+
+            GameObject segmentsRoot = SetupUtils.Child(root.transform, "Segments", Vector3.zero);
+
+            var body = root.AddComponent<DepthBody>();
+            SetupUtils.SetRef(body, "visual", visual.transform);
+            SetupUtils.SetBool(body, "clampToWalkableArea", false);
+
+            var health = root.AddComponent<EnemyHealth>();
+            SetupUtils.SetRef(health, "data", d);
+            SetupUtils.SetRef(health, "effectivenessTable", data.Table);
+            SetupUtils.SetRefArray(health, "flashRenderers", new Object[] { head });
+
+            var hurtbox = root.AddComponent<Hurtbox>();
+            SetupUtils.SetFloat(hurtbox, "halfWidth", 0.65f);
+            SetupUtils.SetFloat(hurtbox, "bodyHeight", 1.3f);
+
+            var boss = root.AddComponent<LombrizBoss>();
+            SetupUtils.SetFloat(boss, "fleeAtHealth01", fleeAt);
+            SetupUtils.SetString(boss, "introMessage", intro);
+            SetupUtils.SetString(boss, fleeAt > 0f ? "fleeMessage" : "defeatMessage", endMessage);
+            SetupUtils.SetRef(boss, "segmentsRoot", segmentsRoot.transform);
+            SetupUtils.SetRef(boss, "segmentSprite", PlaceholderArt.Circle);
+            SetupUtils.SetColor(boss, "segmentColor", d.tint);
+            SetupUtils.SetRef(boss, "moundRenderer", mound);
+            if (minionPrefab != null)
+            {
+                SetupUtils.SetRef(boss, "minionPrefab", minionPrefab);
+                SetupUtils.SetRef(boss, "minionData", minionData);
+            }
+            return root;
+        }
+
+        // ---------- Nivel ----------
+
+        private GameObject BuildSecret()
+        {
+            var root = new GameObject("SecretPassage");
+            var secret = root.AddComponent<SecretPassage>();
+            SpriteRenderer glow = SetupUtils.SpriteChild(root.transform, "Glow", PlaceholderArt.Circle, new Color(1f, 0.9f, 0.4f, 0.75f),
+                Vector3.zero, new Vector2(0.9f, 0.35f), -40);
+            SetupUtils.SetRef(secret, "glow", glow);
             return root;
         }
 

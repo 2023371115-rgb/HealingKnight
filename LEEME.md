@@ -2,7 +2,7 @@
 
 Beat 'em up 2.5D de un jugador (estilo Castle Crashers) hecho en Unity 6. Un nanobot médico recorre los sistemas del cuerpo del Paciente 001 y derrota enfermedades usando el medicamento correcto.
 
-**Entrega de diciembre:** Sistema Digestivo (Boca y esófago, Estómago, Intestino).
+**Entrega de diciembre:** Sistema Digestivo: Estómago → Intestino delgado (la lombriz aparece y huye) → Intestino grueso (pelea final con la lombriz). La **Boca** es un nivel secreto: se desbloquea al tocar un pasaje escondido en el Estómago.
 
 ---
 
@@ -15,7 +15,9 @@ Beat 'em up 2.5D de un jugador (estilo Castle Crashers) hecho en Unity 6. Un nan
 3. Abre `Assets/_Project/Scenes/MainMenu.unity` y dale **Play**.
 4. Haz commit de todo lo que se generó, incluidos los archivos `.meta`.
 
-Para probar mecánicas sin pasar por el menú, abre **Healing Knight → Abrir escena → Sandbox**.
+Para probar mecánicas sin pasar por el menú, abre **Healing Knight → Abrir escena → Sandbox** (tiene todos los enemigos y al jefe).
+
+Si cambia la estructura del proyecto base (nuevos enemigos, niveles, etc.) y todavía no has personalizado los assets generados, usa **Healing Knight → Regenerar proyecto base**: borra `Data`, `Prefabs`, `Scenes` y `Art/Placeholders` de `_Project` y los vuelve a crear.
 
 ## Controles
 
@@ -24,7 +26,7 @@ Para probar mecánicas sin pasar por el menú, abre **Healing Knight → Abrir e
 | Mover (incluye profundidad) | WASD / flechas | Stick izq. / cruceta |
 | Saltar | Espacio | A |
 | Disparar (mantener) | J | X / gatillo der. |
-| Escudo (mantener) | K | B / gatillo izq. |
+| Escudo burbuja (mantener) — levántalo justo antes del golpe para hacer **parry** | K | B / gatillo izq. |
 | Golpe cercano | L | Y |
 | Medicamento anterior / siguiente | Q / E | LB / RB |
 | Medicamento directo | 1 a 5 | — |
@@ -43,12 +45,12 @@ Assets/
 │   ├── Audio/
 │   ├── Data/                 ScriptableObjects: balance y contenido, editables sin código
 │   │   ├── Combat/           EffectivenessTable (tabla medicamento × amenaza)
-│   │   ├── Enemies/          Parasito, ParasitoGrande, Bacteria_HPylori, Rotavirus
+│   │   ├── Enemies/          H. pylori, Giardia, Rotavirus, Entamoeba, C. difficile, Oxiuro, S. mutans, Jefe_Lombriz
 │   │   ├── Medications/      Antibiótico, Antiviral, ..., Antiparasitario, Mucolítico
 │   │   ├── Player/           PlayerConfig (velocidades, salto, daño, escudo...)
 │   │   ├── Resources/        GameCatalog (lista de sistemas del mapa)
 │   │   └── Systems/          Un folder por sistema con su SystemData y sus LevelData
-│   ├── Prefabs/              Player, Enemies, Projectiles, Hazards
+│   ├── Prefabs/              Player, Enemies, Bosses, Projectiles, Hazards, Level
 │   ├── Scenes/               MainMenu, BodyMap, Levels/<Sistema>/..., Sandbox
 │   ├── Scripts/
 │   │   ├── Core/             Datos, efectividad, daño, progreso y guardado (sin dependencias)
@@ -79,6 +81,7 @@ Cada carpeta de `Scripts` es un *assembly* (`.asmdef`): compila por separado y n
 | **Un enemigo nuevo** | Crea un `EnemyData` (clic derecho → Create → Healing Knight → Enemigo), duplica un prefab de `Prefabs/Enemies`, asígnale el dato y cambia el arte de `Visual` |
 | **Un nivel nuevo** | Duplica una escena de `Scenes/Levels`, crea un `LevelData` con el nombre exacto de la escena, agrégalo a la lista del `SystemData` y a Build Settings |
 | **Una arena** | GameObject con `ArenaZone`: `triggerX`, límites y oleadas (prefab + dato + cantidad) |
+| **Un nivel secreto** | En su `LevelData` marca `hidden` y escribe un `secretId`; coloca un prefab `SecretPassage` con ese mismo id en algún nivel |
 | **Un sistema nuevo** | Crea `SystemData` y sus `LevelData`, y agrégalo al `GameCatalog` |
 | **Tu arte del personaje** | Importa el PSD, arma las piezas dentro de `Visual` del prefab `HealingKnight` y borra las figuras de prueba. Los scripts de la raíz no cambian |
 

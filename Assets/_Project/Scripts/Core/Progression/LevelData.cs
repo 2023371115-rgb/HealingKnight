@@ -19,6 +19,12 @@ namespace HealingKnight.Core.Progression
         [Tooltip("Si al completarlo se obtiene una fórmula (normalmente el último nivel del sistema).")]
         public bool grantsFormula;
 
+        [Header("Nivel oculto")]
+        [Tooltip("No aparece en el mapa hasta encontrar su secreto.")]
+        public bool hidden;
+        [Tooltip("Id del secreto que lo desbloquea (lo registra un SecretPassage en algún nivel).")]
+        public string secretId;
+
         public bool HasScene => !string.IsNullOrEmpty(sceneName);
     }
 }

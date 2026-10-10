@@ -90,6 +90,14 @@ namespace HealingKnight.Core.Flow
             SaveSystem.Write(Save);
         }
 
+        /// <summary>Registra un secreto encontrado y guarda. Devuelve true si es nuevo.</summary>
+        public static bool FindSecret(string secretId)
+        {
+            bool isNew = Save.AddSecret(secretId);
+            if (isNew) SaveSystem.Write(Save);
+            return isNew;
+        }
+
         public static void MarkPrologueSeen()
         {
             Save.prologueSeen = true;

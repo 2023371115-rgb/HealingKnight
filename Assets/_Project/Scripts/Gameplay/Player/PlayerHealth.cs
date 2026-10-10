@@ -21,6 +21,7 @@ namespace HealingKnight.Gameplay.Player
         private float current;
         private float invulnerableUntil;
         private Coroutine blinkRoutine;
+        private float[] baseAlphas;
 
         public Team Team => Team.Player;
         public bool IsAlive => current > 0f;
@@ -38,6 +39,9 @@ namespace HealingKnight.Gameplay.Player
             shield = GetComponent<PlayerShield>();
             if (blinkRenderers == null || blinkRenderers.Length == 0)
                 blinkRenderers = GetComponentsInChildren<SpriteRenderer>(true);
+            baseAlphas = new float[blinkRenderers.Length];
+            for (int i = 0; i < blinkRenderers.Length; i++)
+                baseAlphas[i] = blinkRenderers[i] != null ? blinkRenderers[i].color.a : 1f;
             current = controller.Config != null ? controller.Config.maxHealth : 100f;
         }
 
@@ -106,11 +110,13 @@ namespace HealingKnight.Gameplay.Player
 
         private void SetVisible(bool visible)
         {
-            foreach (SpriteRenderer r in blinkRenderers)
+            // Respeta la transparencia original de cada pieza (sombra, burbuja del escudo...).
+            for (int i = 0; i < blinkRenderers.Length; i++)
             {
+                SpriteRenderer r = blinkRenderers[i];
                 if (r == null) continue;
                 Color c = r.color;
-                c.a = visible ? 1f : 0.25f;
+                c.a = visible ? baseAlphas[i] : baseAlphas[i] * 0.25f;
                 r.color = c;
             }
         }

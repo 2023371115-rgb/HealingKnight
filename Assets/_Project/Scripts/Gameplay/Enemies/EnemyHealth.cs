@@ -24,6 +24,12 @@ namespace HealingKnight.Gameplay.Enemies
         private Color[] baseColors;
 
         public EnemyData Data => data;
+
+        /// <summary>Si es true, ignora todo el daño (jefe bajo tierra, por ejemplo).</summary>
+        public bool Invulnerable { get; set; }
+
+        /// <summary>La vida no baja de este valor (0..1 de la vida máxima). Lo usa un jefe que huye en vez de morir.</summary>
+        public float HealthFloor01 { get; set; }
         public Team Team => Team.Enemy;
         public bool IsAlive => !dead;
         public float Health01 => data != null && data.maxHealth > 0f ? current / data.maxHealth : 0f;
@@ -60,7 +66,7 @@ namespace HealingKnight.Gameplay.Enemies
 
         public HitResult ApplyDamage(DamageInfo info)
         {
-            if (dead || info.sourceTeam == Team.Enemy || data == null) return HitResult.Ignored;
+            if (dead || Invulnerable || info.sourceTeam == Team.Enemy || data == null) return HitResult.Ignored;
 
             Effectiveness effectiveness = Effectiveness.Effective;
             float amount = info.amount;
@@ -91,6 +97,7 @@ namespace HealingKnight.Gameplay.Enemies
             }
 
             current -= amount;
+            if (HealthFloor01 > 0f) current = Mathf.Max(current, data.maxHealth * HealthFloor01);
             Flash(effectiveness == Effectiveness.Partial ? new Color(1f, 0.9f, 0.4f) : Color.white, 0.08f);
 
             HitResult result = new HitResult
@@ -104,6 +111,15 @@ namespace HealingKnight.Gameplay.Enemies
 
             if (current <= 0f) Die();
             return result;
+        }
+
+        /// <summary>
+        /// Sale del combate sin morir (un jefe que huye). Cuenta como "ya no está vivo" para las arenas,
+        /// pero no dispara AnyDied ni la animación de muerte. El que llama se encarga de destruirlo.
+        /// </summary>
+        public void Retreat()
+        {
+            dead = true;
         }
 
         private void Die()

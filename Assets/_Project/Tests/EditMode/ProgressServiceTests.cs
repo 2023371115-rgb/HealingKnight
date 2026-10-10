@@ -9,7 +9,7 @@ namespace HealingKnight.Tests
     {
         private GameCatalog catalog;
         private SystemData digestivo, respiratorio;
-        private LevelData boca, estomago, traquea;
+        private LevelData boca, estomago, traquea, secreto;
         private readonly List<Object> created = new List<Object>();
 
         private T Make<T>() where T : ScriptableObject
@@ -34,10 +34,13 @@ namespace HealingKnight.Tests
             boca = Level("boca", "Digestivo_Boca");
             estomago = Level("estomago", "Digestivo_Estomago", true);
             traquea = Level("traquea", "");
+            secreto = Level("secreto", "Digestivo_Secreto");
+            secreto.hidden = true;
+            secreto.secretId = "pasaje";
 
             digestivo = Make<SystemData>();
             digestivo.id = "digestivo";
-            digestivo.levels = new List<LevelData> { boca, estomago };
+            digestivo.levels = new List<LevelData> { boca, estomago, secreto };
 
             respiratorio = Make<SystemData>();
             respiratorio.id = "respiratorio";
@@ -107,17 +110,38 @@ namespace HealingKnight.Tests
         }
 
         [Test]
+        public void NivelOculto_NoSeVeNiCuentaHastaEncontrarElSecreto()
+        {
+            var save = new SaveData();
+            var progress = new ProgressService(catalog, save);
+
+            Assert.IsFalse(progress.IsLevelVisible(secreto));
+            Assert.IsFalse(progress.IsLevelPlayable(secreto));
+
+            // Completar los niveles normales basta para terminar el sistema (el secreto es opcional).
+            progress.CompleteLevel(boca);
+            progress.CompleteLevel(estomago);
+            Assert.IsTrue(progress.IsSystemCompleted(digestivo));
+
+            save.AddSecret("pasaje");
+            Assert.IsTrue(progress.IsLevelVisible(secreto));
+            Assert.IsTrue(progress.IsLevelPlayable(secreto));
+        }
+
+        [Test]
         public void Guardado_SobreviveSerializacionJson()
         {
             var save = new SaveData();
             save.MarkLevelCompleted("boca");
             save.AddFormula("digestivo");
             save.prologueSeen = true;
+            save.AddSecret("pasaje");
 
             SaveData loaded = JsonUtility.FromJson<SaveData>(JsonUtility.ToJson(save));
             Assert.IsTrue(loaded.IsLevelCompleted("boca"));
             Assert.IsTrue(loaded.prologueSeen);
             CollectionAssert.Contains(loaded.formulas, "digestivo");
+            Assert.IsTrue(loaded.HasSecret("pasaje"));
         }
     }
 }

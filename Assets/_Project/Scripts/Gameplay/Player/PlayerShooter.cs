@@ -105,6 +105,9 @@ namespace HealingKnight.Gameplay.Player
             MedicationChanged?.Invoke(Current);
         }
 
+        /// <summary>Recompensa del parry: el siguiente disparo sale al instante.</summary>
+        public void ResetCooldown() => cooldown = 0f;
+
         public bool TryShoot()
         {
             if (cooldown > 0f || pool == null || Current == null) return false;

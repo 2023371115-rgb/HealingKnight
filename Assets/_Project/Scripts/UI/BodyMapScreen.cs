@@ -92,7 +92,7 @@ namespace HealingKnight.UI
 
             foreach (LevelData level in system.levels)
             {
-                if (level == null) continue;
+                if (level == null || !progress.IsLevelVisible(level)) continue; // los secretos no se muestran
                 BuildLevelButton(column.transform, level, progress, unlocked);
             }
         }
@@ -102,7 +102,7 @@ namespace HealingKnight.UI
             bool playable = progress.IsLevelPlayable(level);
             bool done = progress.IsLevelCompleted(level);
 
-            string label = level.displayName;
+            string label = level.hidden ? "Secreto: " + level.displayName : level.displayName;
             if (done) label += "\n<size=70%>Completado</size>";
             else if (systemUnlocked && !level.HasScene) label += "\n<size=70%>Próximamente</size>";
             else if (!playable) label += "\n<size=70%>Bloqueado</size>";

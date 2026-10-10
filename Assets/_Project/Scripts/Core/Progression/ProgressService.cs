@@ -6,6 +6,7 @@ namespace HealingKnight.Core.Progression
     /// - Un sistema se desbloquea al completar todos los niveles del anterior.
     /// - Dentro de un sistema, cada nivel se desbloquea al completar el anterior.
     /// - Lo completado se puede rejugar.
+    /// - Los niveles ocultos no cuentan para completar el sistema; aparecen al encontrar su secreto.
     /// No depende de escenas ni de disco, por eso se puede probar con pruebas automáticas.
     /// </summary>
     public class ProgressService
@@ -31,12 +32,15 @@ namespace HealingKnight.Core.Progression
 
         public bool IsSystemCompleted(SystemData system)
         {
-            if (system == null || system.levels.Count == 0) return false;
+            if (system == null) return false;
+            bool any = false;
             foreach (LevelData level in system.levels)
             {
-                if (level == null || !save.IsLevelCompleted(level.id)) return false;
+                if (level == null || level.hidden) continue;
+                any = true;
+                if (!save.IsLevelCompleted(level.id)) return false;
             }
-            return true;
+            return any;
         }
 
         public bool IsLevelCompleted(LevelData level)
@@ -44,14 +48,30 @@ namespace HealingKnight.Core.Progression
             return level != null && save.IsLevelCompleted(level.id);
         }
 
+        /// <summary>¿Se muestra en el mapa? Los ocultos solo después de encontrar su secreto (o si ya se jugaron).</summary>
+        public bool IsLevelVisible(LevelData level)
+        {
+            if (level == null) return false;
+            if (!level.hidden) return true;
+            return save.HasSecret(level.secretId) || save.IsLevelCompleted(level.id);
+        }
+
         public bool IsLevelUnlocked(LevelData level)
         {
             SystemData system = catalog.FindSystemOf(level);
             if (system == null || !IsSystemUnlocked(system)) return false;
 
+            if (level.hidden) return IsLevelVisible(level);
+
+            // El anterior que no sea oculto debe estar completado.
             int index = system.levels.IndexOf(level);
-            if (index == 0) return true;
-            return save.IsLevelCompleted(system.levels[index - 1].id);
+            for (int i = index - 1; i >= 0; i--)
+            {
+                LevelData previous = system.levels[i];
+                if (previous == null || previous.hidden) continue;
+                return save.IsLevelCompleted(previous.id);
+            }
+            return true;
         }
 
         /// <summary>Desbloqueado y con escena lista para jugarse.</summary>

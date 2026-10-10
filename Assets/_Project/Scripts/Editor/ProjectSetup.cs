@@ -58,17 +58,48 @@ namespace HealingKnight.EditorTools
         [MenuItem("Healing Knight/Abrir escena/Mapa del cuerpo", priority = 21)]
         private static void OpenBodyMap() => Open(SceneSetup.BodyMapPath);
 
-        [MenuItem("Healing Knight/Abrir escena/Digestivo · Boca", priority = 22)]
-        private static void OpenBoca() => Open(SceneSetup.BocaPath);
-
-        [MenuItem("Healing Knight/Abrir escena/Digestivo · Estómago", priority = 23)]
+        [MenuItem("Healing Knight/Abrir escena/Digestivo · Estómago", priority = 22)]
         private static void OpenEstomago() => Open(SceneSetup.EstomagoPath);
 
-        [MenuItem("Healing Knight/Abrir escena/Digestivo · Intestino", priority = 24)]
-        private static void OpenIntestino() => Open(SceneSetup.IntestinoPath);
+        [MenuItem("Healing Knight/Abrir escena/Digestivo · Intestino delgado", priority = 23)]
+        private static void OpenDelgado() => Open(SceneSetup.DelgadoPath);
 
-        [MenuItem("Healing Knight/Abrir escena/Sandbox", priority = 25)]
+        [MenuItem("Healing Knight/Abrir escena/Digestivo · Intestino grueso", priority = 24)]
+        private static void OpenGrueso() => Open(SceneSetup.GruesoPath);
+
+        [MenuItem("Healing Knight/Abrir escena/Digestivo · Boca (secreto)", priority = 25)]
+        private static void OpenBoca() => Open(SceneSetup.BocaPath);
+
+        [MenuItem("Healing Knight/Abrir escena/Sandbox", priority = 26)]
         private static void OpenSandbox() => Open(SceneSetup.SandboxPath);
+
+        /// <summary>
+        /// Borra TODO lo generado (datos, prefabs, escenas y sprites de prueba) y lo vuelve a crear.
+        /// Úsalo cuando cambie la estructura del proyecto base y todavía no hayas personalizado esos assets.
+        /// </summary>
+        [MenuItem("Healing Knight/Regenerar proyecto base (borra lo generado)", priority = 1)]
+        public static void RegenerateBaseProject()
+        {
+            bool ok = EditorUtility.DisplayDialog("Healing Knight",
+                "Esto BORRA y vuelve a crear:\n\n" +
+                "  _Project/Data\n  _Project/Prefabs\n  _Project/Scenes\n  _Project/Art/Placeholders\n\n" +
+                "Cualquier cambio que hayas hecho en esos assets se pierde (tu arte en otras carpetas no se toca).\n\n¿Continuar?",
+                "Regenerar", "Cancelar");
+            if (!ok) return;
+            if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
+
+            EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+            foreach (string folder in new[]
+                     {
+                         DataSetup.DataFolder, PrefabSetup.Folder, SceneSetup.Folder, PlaceholderArt.Folder
+                     })
+            {
+                if (AssetDatabase.IsValidFolder(folder)) AssetDatabase.DeleteAsset(folder);
+            }
+            AssetDatabase.Refresh();
+
+            CreateBaseProject();
+        }
 
         [MenuItem("Healing Knight/Borrar progreso guardado", priority = 40)]
         private static void DeleteSave()

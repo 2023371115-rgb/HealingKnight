@@ -15,9 +15,9 @@ namespace HealingKnight.EditorTools
         public MedicationData Antibiotico, Antiviral, Antiinflamatorio, Antihistaminico, Antiparasitario, Mucolitico;
         public EffectivenessTable Table;
         public PlayerConfig PlayerConfig;
-        public EnemyData Parasito, ParasitoGrande, Bacteria, Rotavirus;
+        public EnemyData HPylori, Giardia, Rotavirus, Entamoeba, CDifficile, Oxiuro, SMutans, Lombriz;
         public GameCatalog Catalog;
-        public LevelData DigestivoBoca, DigestivoEstomago, DigestivoIntestino;
+        public LevelData DigestivoEstomago, DigestivoDelgado, DigestivoGrueso, DigestivoBoca;
 
         public void Run()
         {
@@ -84,63 +84,93 @@ namespace HealingKnight.EditorTools
             });
         }
 
+        private EnemyData Enemy(string file, System.Action<EnemyData> init)
+        {
+            return SetupUtils.LoadOrCreate<EnemyData>($"{DataFolder}/Enemies/{file}.asset", init);
+        }
+
         private void CreateEnemies()
         {
-            Parasito = SetupUtils.LoadOrCreate<EnemyData>($"{DataFolder}/Enemies/Parasito.asset", e =>
+            // Todos son patógenos reales del sistema digestivo (con licencia de "mutados" para el juego).
+            HPylori = Enemy("Bacteria_HPylori", e =>
             {
-                e.displayName = "Parásito";
-                e.threat = ThreatType.Parasito;
-                e.maxHealth = 30f;
-                e.moveSpeed = 2.2f;
-                e.attackType = EnemyAttackType.Melee;
-                e.attackDistance = 1.1f;
-                e.attackDamage = 10f;
-                e.tint = new Color(0.95f, 0.8f, 0.6f);
-            });
-
-            ParasitoGrande = SetupUtils.LoadOrCreate<EnemyData>($"{DataFolder}/Enemies/ParasitoGrande.asset", e =>
-            {
-                e.displayName = "Parásito grande";
-                e.threat = ThreatType.Parasito;
-                e.maxHealth = 60f;
-                e.moveSpeed = 1.3f;
-                e.attackType = EnemyAttackType.Melee;
-                e.attackDistance = 1.5f;
-                e.attackWindup = 0.6f;
-                e.attackDamage = 15f;
-                e.attackKnockback = 6f;
-                e.knockbackResistance = 0.7f;
-                e.linfocitoCharge = 2;
-                e.tint = new Color(0.85f, 0.65f, 0.45f);
-                e.visualScale = 1.5f;
-            });
-
-            Bacteria = SetupUtils.LoadOrCreate<EnemyData>($"{DataFolder}/Enemies/Bacteria_HPylori.asset", e =>
-            {
-                e.displayName = "Bacteria (H. pylori)";
+                e.displayName = "H. pylori";
                 e.threat = ThreatType.Bacteria;
-                e.maxHealth = 20f;
-                e.moveSpeed = 3f;
-                e.attackType = EnemyAttackType.Melee;
-                e.attackDistance = 1f;
-                e.attackWindup = 0.35f;
-                e.attackDamage = 10f;
+                e.maxHealth = 20f; e.moveSpeed = 3f;
+                e.attackDistance = 1f; e.attackWindup = 0.35f; e.attackDamage = 10f;
                 e.tint = new Color(0.5f, 0.85f, 0.4f);
             });
 
-            Rotavirus = SetupUtils.LoadOrCreate<EnemyData>($"{DataFolder}/Enemies/Rotavirus.asset", e =>
+            Giardia = Enemy("Parasito_Giardia", e =>
+            {
+                e.displayName = "Giardia";
+                e.threat = ThreatType.Parasito;
+                e.maxHealth = 22f; e.moveSpeed = 3.2f;
+                e.attackDistance = 1f; e.attackWindup = 0.35f; e.attackDamage = 8f;
+                e.tint = new Color(0.95f, 0.85f, 0.55f);
+            });
+
+            Rotavirus = Enemy("Virus_Rotavirus", e =>
             {
                 e.displayName = "Rotavirus";
                 e.threat = ThreatType.Virus;
-                e.maxHealth = 20f;
-                e.moveSpeed = 2f;
+                e.maxHealth = 20f; e.moveSpeed = 2f;
                 e.attackType = EnemyAttackType.Ranged;
-                e.attackDistance = 5.5f;
-                e.attackWindup = 0.4f;
-                e.attackCooldown = 2.5f;
-                e.attackDamage = 10f;
+                e.attackDistance = 5.5f; e.attackWindup = 0.4f; e.attackCooldown = 2.5f; e.attackDamage = 10f;
                 e.projectileColor = new Color(0.8f, 0.5f, 1f);
                 e.tint = new Color(0.75f, 0.45f, 0.95f);
+            });
+
+            Entamoeba = Enemy("Parasito_Entamoeba", e =>
+            {
+                e.displayName = "Entamoeba (ameba)";
+                e.threat = ThreatType.Parasito;
+                e.maxHealth = 50f; e.moveSpeed = 1.4f;
+                e.attackDistance = 1.4f; e.attackWindup = 0.6f; e.attackDamage = 15f; e.attackKnockback = 6f;
+                e.knockbackResistance = 0.6f; e.linfocitoCharge = 2;
+                e.tint = new Color(0.8f, 0.6f, 0.75f);
+                e.visualScale = 1.4f;
+            });
+
+            CDifficile = Enemy("Bacteria_CDifficile", e =>
+            {
+                e.displayName = "C. difficile";
+                e.threat = ThreatType.Bacteria;
+                e.maxHealth = 28f; e.moveSpeed = 2.6f;
+                e.attackDistance = 1.1f; e.attackWindup = 0.4f; e.attackDamage = 12f;
+                e.tint = new Color(0.45f, 0.65f, 0.35f);
+                e.visualScale = 1.1f;
+            });
+
+            Oxiuro = Enemy("Parasito_Oxiuro", e =>
+            {
+                e.displayName = "Oxiuro";
+                e.threat = ThreatType.Parasito;
+                e.maxHealth = 14f; e.moveSpeed = 3.5f;
+                e.attackDistance = 0.9f; e.attackWindup = 0.3f; e.attackDamage = 6f;
+                e.tint = new Color(0.97f, 0.95f, 0.88f);
+                e.visualScale = 0.8f;
+            });
+
+            SMutans = Enemy("Bacteria_SMutans", e =>
+            {
+                e.displayName = "S. mutans (caries)";
+                e.threat = ThreatType.Bacteria;
+                e.maxHealth = 18f; e.moveSpeed = 2.8f;
+                e.attackDistance = 1f; e.attackWindup = 0.35f; e.attackDamage = 8f;
+                e.tint = new Color(0.85f, 0.85f, 0.55f);
+            });
+
+            Lombriz = Enemy("Jefe_Lombriz", e =>
+            {
+                e.displayName = "Lombriz";
+                e.threat = ThreatType.Parasito;
+                e.maxHealth = 320f;
+                e.meleeDamageTakenMultiplier = 0.6f;
+                e.knockbackResistance = 1f;
+                e.hurtStunTime = 0f;
+                e.linfocitoCharge = 5;
+                e.tint = new Color(0.95f, 0.62f, 0.6f);
             });
         }
 
@@ -174,24 +204,32 @@ namespace HealingKnight.EditorTools
 
         private void CreateCatalog()
         {
-            DigestivoBoca = Level("Digestivo", "01_BocaEsofago", "digestivo_boca", "Boca y esófago", "Digestivo_Boca", false,
-                "Aprende a moverte, disparar y elegir el medicamento correcto.");
-            DigestivoEstomago = Level("Digestivo", "02_Estomago", "digestivo_estomago", "Estómago", "Digestivo_Estomago", false,
-                "Cruza el ácido gástrico y elimina a H. pylori y los parásitos.");
-            DigestivoIntestino = Level("Digestivo", "03_Intestino", "digestivo_intestino", "Intestino", "Digestivo_Intestino", true,
-                "Elimina al rotavirus y derrota a la lombriz que protege el foco.");
+            DigestivoEstomago = Level("Digestivo", "01_Estomago", "digestivo_estomago", "Estómago", "Digestivo_Estomago", false,
+                "Aprende a pelear y cruza el ácido gástrico eliminando a H. pylori.");
+            DigestivoDelgado = Level("Digestivo", "02_IntestinoDelgado", "digestivo_delgado", "Intestino delgado", "Digestivo_IntestinoDelgado", false,
+                "Elimina Giardia y rotavirus. La lombriz aparece... y huye.");
+            DigestivoGrueso = Level("Digestivo", "03_IntestinoGrueso", "digestivo_grueso", "Intestino grueso", "Digestivo_IntestinoGrueso", true,
+                "Amebas, C. difficile y oxiuros. Acaba con la lombriz.");
+            DigestivoBoca = Level("Digestivo", "99_Boca_Secreto", "digestivo_boca", "Boca", "Digestivo_Boca", false,
+                "Nivel secreto: caries y placa bacteriana.");
+            if (!DigestivoBoca.hidden)
+            {
+                DigestivoBoca.hidden = true;
+                DigestivoBoca.secretId = "digestivo_boca";
+                UnityEditor.EditorUtility.SetDirty(DigestivoBoca);
+            }
 
             SystemData digestivo = MakeSystem("Digestivo", "digestivo", "Sistema Digestivo", "I", Antiparasitario,
                 new Color(0.95f, 0.45f, 0.55f), new Vector2(0.5f, 0.3f),
-                "La puerta de entrada: los patógenos se ingirieron en cápsulas y se instalaron aquí primero.",
-                DigestivoBoca, DigestivoEstomago, DigestivoIntestino);
+                "Los patógenos se ingirieron en cápsulas y se instalaron aquí primero.",
+                DigestivoEstomago, DigestivoDelgado, DigestivoGrueso, DigestivoBoca);
 
             SystemData respiratorio = MakeSystem("Respiratorio", "respiratorio", "Sistema Respiratorio", "II", Mucolitico,
                 new Color(0.45f, 0.75f, 1f), new Vector2(0.5f, 0.6f),
                 "La mucosidad atrapa a los patógenos y los protege del medicamento.",
-                Level("Respiratorio", "01_Traquea", "respiratorio_traquea", "Tráquea", "", false, ""),
-                Level("Respiratorio", "02_Bronquiolos", "respiratorio_bronquiolos", "Bronquiolos", "", false, ""),
-                Level("Respiratorio", "03_Alveolos", "respiratorio_alveolos", "Alvéolos", "", true, ""));
+                Level("Respiratorio", "01_Nariz", "respiratorio_nariz", "Nariz", "", false, "Rinovirus y alérgenos."),
+                Level("Respiratorio", "02_Traquea", "respiratorio_traquea", "Tráquea", "", false, "Tos ferina (Bordetella pertussis)."),
+                Level("Respiratorio", "03_Pulmones", "respiratorio_pulmones", "Pulmones", "", true, "Neumonía, influenza y el foco de tuberculosis."));
 
             SystemData nervioso = MakeSystem("Nervioso", "nervioso", "Sistema Nervioso", "III", null,
                 new Color(0.7f, 0.5f, 1f), new Vector2(0.5f, 0.9f),

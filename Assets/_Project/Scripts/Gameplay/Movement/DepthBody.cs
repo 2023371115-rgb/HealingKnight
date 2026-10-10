@@ -30,6 +30,7 @@ namespace HealingKnight.Gameplay.Movement
         private float gravity;
         private float fallMultiplier = 1f;
         private int facing = 1;
+        private bool kinematicHeight;
         private Vector3 shadowBaseScale = Vector3.one;
         private Vector3 visualBaseScale = Vector3.one;
 
@@ -77,6 +78,22 @@ namespace HealingKnight.Gameplay.Movement
             fallMultiplier = 1f;
         }
 
+        /// <summary>
+        /// Para movimientos guiados por script (jefes): la altura deja de usar gravedad y se fija con SetHeight.
+        /// </summary>
+        public void SetKinematicHeight(bool value)
+        {
+            kinematicHeight = value;
+            verticalVelocity = 0f;
+        }
+
+        /// <summary>Fija la altura directamente (puede ser negativa = bajo el suelo). Úsalo con SetKinematicHeight(true).</summary>
+        public void SetHeight(float value)
+        {
+            height = value;
+            ApplyVisualHeight();
+        }
+
         public void Teleport(Vector2 groundPosition)
         {
             transform.position = new Vector3(groundPosition.x, groundPosition.y, transform.position.z);
@@ -97,7 +114,7 @@ namespace HealingKnight.Gameplay.Movement
             transform.position = new Vector3(next.x, next.y, transform.position.z);
 
             // Altura
-            if (height > 0f || verticalVelocity > 0f)
+            if (!kinematicHeight && (height > 0f || verticalVelocity > 0f))
             {
                 float g = verticalVelocity < 0f ? gravity * fallMultiplier : gravity;
                 verticalVelocity -= g * dt;

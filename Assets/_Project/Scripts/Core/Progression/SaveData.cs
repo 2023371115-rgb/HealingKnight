@@ -13,6 +13,7 @@ namespace HealingKnight.Core.Progression
         public bool prologueSeen;
         public List<string> completedLevels = new List<string>();
         public List<string> formulas = new List<string>();
+        public List<string> secrets = new List<string>();
 
         // Reservado por si después se agregan estrellas o puntaje por nivel.
         public List<LevelRecord> records = new List<LevelRecord>();
@@ -26,6 +27,21 @@ namespace HealingKnight.Core.Progression
         {
             if (!string.IsNullOrEmpty(levelId) && !completedLevels.Contains(levelId))
                 completedLevels.Add(levelId);
+        }
+
+        public bool HasSecret(string secretId)
+        {
+            return !string.IsNullOrEmpty(secretId) && secrets != null && secrets.Contains(secretId);
+        }
+
+        /// <summary>Devuelve true si es la primera vez que se encuentra.</summary>
+        public bool AddSecret(string secretId)
+        {
+            if (string.IsNullOrEmpty(secretId)) return false;
+            if (secrets == null) secrets = new List<string>();
+            if (secrets.Contains(secretId)) return false;
+            secrets.Add(secretId);
+            return true;
         }
 
         public void AddFormula(string systemId)

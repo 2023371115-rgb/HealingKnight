@@ -15,6 +15,8 @@ namespace HealingKnight.Gameplay.Level
         public static event Action LevelCompleted;
         public static event Action PlayerDefeated;
         public static event Action<string> Message;                     // textos breves de NODO / tutorial
+        public static event Action<string, Enemies.EnemyHealth> BossStarted; // nombre, vida del jefe
+        public static event Action BossEnded;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetStatics()
@@ -25,6 +27,8 @@ namespace HealingKnight.Gameplay.Level
             LevelCompleted = null;
             PlayerDefeated = null;
             Message = null;
+            BossStarted = null;
+            BossEnded = null;
         }
 
         public static void RaiseArenaStarted(ArenaZone arena) => ArenaStarted?.Invoke(arena);
@@ -33,5 +37,7 @@ namespace HealingKnight.Gameplay.Level
         public static void RaiseLevelCompleted() => LevelCompleted?.Invoke();
         public static void RaisePlayerDefeated() => PlayerDefeated?.Invoke();
         public static void RaiseMessage(string text) => Message?.Invoke(text);
+        public static void RaiseBossStarted(string name, Enemies.EnemyHealth health) => BossStarted?.Invoke(name, health);
+        public static void RaiseBossEnded() => BossEnded?.Invoke();
     }
 }
