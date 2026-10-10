@@ -64,6 +64,13 @@ namespace HealingKnight.EditorTools
             SetupUtils.EnsureFolder(Path.GetDirectoryName(path));
 
             Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+
+            // Al abrir una escena nueva Unity descarga los assets que no se están usando, y las
+            // referencias que teníamos a prefabs y datos quedan "destruidas". Se vuelven a cargar
+            // del disco (no se crea nada nuevo: ya existen).
+            data.Run();
+            prefabs.Run();
+
             build();
             EditorSceneManager.SaveScene(scene, path);
             created.Add(path);
