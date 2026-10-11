@@ -27,6 +27,10 @@ namespace HealingKnight.Gameplay.Player
         [SerializeField] private Transform armPivot;
         [SerializeField] private SpriteRenderer tintedArm;
 
+        [Tooltip("Piezas que se pintan del color del medicamento (ojos, cruz, rueda del casco, luz del cañón...). " +
+                 "Dibújalas en BLANCO o gris claro en su propia capa: el color se multiplica encima.")]
+        [SerializeField] private SpriteRenderer[] medicationColorParts;
+
         [Tooltip("Para probar una escena sin pasar por el mapa: cápsula regional a usar si no hay sistema actual.")]
         [SerializeField] private MedicationData fallbackRegionalMedication;
 
@@ -128,7 +132,13 @@ namespace HealingKnight.Gameplay.Player
 
         private void NotifyChanged()
         {
-            if (tintedArm != null && Current != null) tintedArm.color = Current.color;
+            if (Current != null)
+            {
+                if (tintedArm != null) tintedArm.color = Current.color;
+                if (medicationColorParts != null)
+                    foreach (SpriteRenderer part in medicationColorParts)
+                        if (part != null) part.color = Current.color;
+            }
             MedicationChanged?.Invoke(Current);
         }
 
