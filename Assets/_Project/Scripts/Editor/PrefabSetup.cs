@@ -23,6 +23,8 @@ namespace HealingKnight.EditorTools
         public PlayerController Player;
         public EnemyHealth HPylori, Giardia, Rotavirus, Entamoeba, CDifficile, Oxiuro, SMutans;
         public EnemyHealth LombrizDelgado, LombrizGrueso;
+        public EnemyHealth Rinovirus, Polen, SAureus, Pertussis, Neumococo, Influenza, Tuberculosis;
+        public EnemyHealth Mucosidad, Inflamacion;
         public AcidPool Acid;
         public SecretPassage Secret;
 
@@ -56,6 +58,17 @@ namespace HealingKnight.EditorTools
                 () => BuildLombriz("Lombriz_IntestinoGrueso", 0f, Oxiuro, data.Oxiuro,
                     "NODO: Aquí se esconde. Acaba con ella.",
                     "NODO: Foco eliminado. Fórmula 1 obtenida."));
+
+            // Sistema Respiratorio
+            Rinovirus = Enemy("Virus_Rinovirus", data.Rinovirus, EnemyShape.Round);
+            Polen = Enemy("Alergeno_Polen", data.Polen, EnemyShape.Pollen);
+            SAureus = Enemy("Bacteria_SAureus", data.SAureus, EnemyShape.Cluster);
+            Pertussis = Enemy("Bacteria_Pertussis", data.Pertussis, EnemyShape.Capsule);
+            Neumococo = Enemy("Bacteria_Neumococo", data.Neumococo, EnemyShape.Diplo);
+            Influenza = Enemy("Virus_Influenza", data.Influenza, EnemyShape.Round);
+            Tuberculosis = Enemy("Bacteria_Tuberculosis", data.Tuberculosis, EnemyShape.Capsule);
+            Mucosidad = LoadOrBuild<EnemyHealth>($"{Folder}/Hazards/Bloqueo_Mucosidad.prefab", () => BuildObstacle("Bloqueo_Mucosidad", data.Mucosidad, true));
+            Inflamacion = LoadOrBuild<EnemyHealth>($"{Folder}/Hazards/Bloqueo_Inflamacion.prefab", () => BuildObstacle("Bloqueo_Inflamacion", data.Inflamacion, false));
 
             Secret = LoadOrBuild<SecretPassage>($"{Folder}/Level/SecretPassage.prefab", BuildSecret);
 
@@ -210,7 +223,7 @@ namespace HealingKnight.EditorTools
 
         // ---------- Enemigos ----------
 
-        private enum EnemyShape { Long, Capsule, Round, Blob, Pear }
+        private enum EnemyShape { Long, Capsule, Round, Blob, Pear, Cluster, Diplo, Pollen }
 
         private GameObject BuildEnemy(string name, EnemyData enemyData, EnemyShape shape)
         {
@@ -251,6 +264,35 @@ namespace HealingKnight.EditorTools
                     SetupUtils.SpriteChild(visual.transform, "Tail", PlaceholderArt.Capsule, Color.Lerp(enemyData.tint, Color.black, 0.15f),
                         new Vector3(-0.45f * s, 0.35f * s, 0f), new Vector2(0.6f * s, 0.18f * s), -1);
                     bodySize = new Vector2(0.85f * s, 1.1f * s);
+                    break;
+                case EnemyShape.Cluster: // estafilococo: racimo de esferas
+                    bodySprite = SetupUtils.SpriteChild(visual.transform, "Body", PlaceholderArt.Circle, enemyData.tint,
+                        new Vector3(0f, 0.4f * s, 0f), new Vector2(0.55f * s, 0.55f * s), 0);
+                    SetupUtils.SpriteChild(visual.transform, "Ball2", PlaceholderArt.Circle, Color.Lerp(enemyData.tint, Color.black, 0.1f),
+                        new Vector3(-0.32f * s, 0.25f * s, 0f), new Vector2(0.5f * s, 0.5f * s), -1);
+                    SetupUtils.SpriteChild(visual.transform, "Ball3", PlaceholderArt.Circle, Color.Lerp(enemyData.tint, Color.black, 0.15f),
+                        new Vector3(0.3f * s, 0.22f * s, 0f), new Vector2(0.48f * s, 0.48f * s), -1);
+                    SetupUtils.SpriteChild(visual.transform, "Ball4", PlaceholderArt.Circle, Color.Lerp(enemyData.tint, Color.white, 0.15f),
+                        new Vector3(-0.05f * s, 0.75f * s, 0f), new Vector2(0.45f * s, 0.45f * s), -1);
+                    bodySize = new Vector2(1f * s, 1f * s);
+                    break;
+                case EnemyShape.Diplo: // neumococo: diplococo (dos esferas juntas)
+                    bodySprite = SetupUtils.SpriteChild(visual.transform, "Body", PlaceholderArt.Circle, enemyData.tint,
+                        new Vector3(0.22f * s, 0.32f * s, 0f), new Vector2(0.62f * s, 0.62f * s), 0);
+                    SetupUtils.SpriteChild(visual.transform, "Twin", PlaceholderArt.Circle, Color.Lerp(enemyData.tint, Color.black, 0.12f),
+                        new Vector3(-0.25f * s, 0.32f * s, 0f), new Vector2(0.62f * s, 0.62f * s), -1);
+                    bodySize = new Vector2(1.05f * s, 0.65f * s);
+                    break;
+                case EnemyShape.Pollen: // polen: esfera con muchas bolitas
+                    bodySprite = SetupUtils.SpriteChild(visual.transform, "Body", PlaceholderArt.Circle, enemyData.tint,
+                        Vector3.zero, new Vector2(0.8f * s, 0.8f * s), 0);
+                    for (int i = 0; i < 10; i++)
+                    {
+                        float a = i * 36f * Mathf.Deg2Rad;
+                        SetupUtils.SpriteChild(bodySprite.transform, "Bump" + i, PlaceholderArt.Circle, Color.Lerp(enemyData.tint, new Color(0.8f, 0.5f, 0f), 0.35f),
+                            new Vector3(Mathf.Cos(a) * 0.5f, Mathf.Sin(a) * 0.5f, 0f), new Vector2(0.24f, 0.24f), -1);
+                    }
+                    bodySize = new Vector2(0.85f * s, 0.85f * s);
                     break;
                 default: // virus: esfera
                     bodySprite = SetupUtils.SpriteChild(visual.transform, "Body", PlaceholderArt.Circle, enemyData.tint,
@@ -336,6 +378,62 @@ namespace HealingKnight.EditorTools
                 SetupUtils.SetRef(boss, "minionPrefab", minionPrefab);
                 SetupUtils.SetRef(boss, "minionData", minionData);
             }
+            return root;
+        }
+
+        // ---------- Bloqueos tratables (Pulmones, GDD 5.12) ----------
+
+        private GameObject BuildObstacle(string name, EnemyData obstacleData, bool mucus)
+        {
+            const float width = 1.4f;
+            const float height = 12f; // más alto que cualquier salto: hay que disolverlo
+            var root = new GameObject(name);
+            root.layer = PhysicsLayers.Ground;
+            root.AddComponent<SortingGroup>().sortingOrder = 3;
+
+            var wall = root.AddComponent<BoxCollider2D>();
+            wall.size = new Vector2(width, height);
+            wall.offset = new Vector2(0f, height * 0.5f);
+
+            // El dibujo tiene el pivote en el piso para que se encoja hacia abajo.
+            GameObject visual = SetupUtils.Child(root.transform, "Visual", Vector3.zero);
+            Color c = obstacleData.tint;
+            SpriteRenderer main = SetupUtils.SpriteChild(visual.transform, "Mass", PlaceholderArt.Square, c,
+                new Vector3(0f, 0f, 0f), new Vector2(width, height), 0);
+            var renderers = new System.Collections.Generic.List<Object> { main };
+            for (int i = 0; i < 9; i++)
+            {
+                // Bultos en la orilla para que se lea orgánico (gotas de moco o tejido hinchado).
+                float y = 0.5f + i * 1.25f;
+                float side = i % 2 == 0 ? -1f : 1f;
+                float size = mucus ? 0.9f + (i % 3) * 0.25f : 1.2f + (i % 2) * 0.3f;
+                SpriteRenderer bump = SetupUtils.SpriteChild(visual.transform, "Bump" + i, PlaceholderArt.Circle,
+                    Color.Lerp(c, mucus ? Color.white : new Color(0.7f, 0.1f, 0.15f), mucus ? 0.25f : 0.2f),
+                    new Vector3(side * width * 0.45f, y, 0f), new Vector2(size, size), 1);
+                renderers.Add(bump);
+            }
+            if (!mucus)
+            {
+                // Vetas de la inflamación.
+                for (int i = 0; i < 4; i++)
+                    SetupUtils.SpriteChild(visual.transform, "Vein" + i, PlaceholderArt.Capsule, new Color(0.7f, 0.1f, 0.2f, 0.8f),
+                        new Vector3(0f, 1.2f + i * 2.4f, 0f), new Vector2(1f, 0.18f), 2).transform.localRotation = Quaternion.Euler(0f, 0f, i % 2 == 0 ? 25f : -25f);
+            }
+
+            var health = root.AddComponent<EnemyHealth>();
+            SetupUtils.SetRef(health, "data", obstacleData);
+            SetupUtils.SetRef(health, "effectivenessTable", data.Table);
+            SetupUtils.SetRefArray(health, "flashRenderers", renderers.ToArray());
+
+            // Hurtbox un poco más ancha que la pared para que la cápsula la toque antes de chocar.
+            var hurtbox = root.AddComponent<Hurtbox>();
+            SetHurtbox(hurtbox, new Vector2(0f, height * 0.5f), new Vector2(width + 0.9f, height));
+
+            var obstacle = root.AddComponent<TreatableObstacle>();
+            SetupUtils.SetRef(obstacle, "visual", visual.transform);
+            SetupUtils.SetBool(obstacle, "slowsOnTouch", mucus);
+            SetupUtils.SetBool(obstacle, "shrinkWidth", !mucus);
+            SetupUtils.SetFloat(obstacle, "minScale", mucus ? 0.45f : 0.55f);
             return root;
         }
 

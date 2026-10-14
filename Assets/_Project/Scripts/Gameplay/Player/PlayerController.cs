@@ -36,6 +36,8 @@ namespace HealingKnight.Gameplay.Player
         private float slowFallLeft;
         private bool slowFalling;
         private bool locked;
+        private float slowMultiplier = 1f;
+        private float slowUntil;
         private Vector2 aim = Vector2.right;
         private Vector2 lastSafePosition;
         private Vector3 bodyVisualBaseScale = Vector3.one;
@@ -142,6 +144,8 @@ namespace HealingKnight.Gameplay.Player
             float speed = crouching ? config.crouchSpeed : config.runSpeed;
             if (shielding) speed *= config.shieldMoveSpeedMultiplier;
             if (locked) speed = motor.IsGrounded ? 0f : config.lockedAirSpeed;
+            if (Time.time < slowUntil) speed *= slowMultiplier;
+            else slowMultiplier = 1f;
             float target = Mathf.Abs(move.x) > 0.3f ? Mathf.Sign(move.x) * speed : 0f;
             float vx = motor.IsGrounded ? target : Mathf.Lerp(motor.Velocity.x, target, config.airControl);
             motor.SetHorizontalVelocity(vx);
@@ -252,6 +256,13 @@ namespace HealingKnight.Gameplay.Player
             info.blockable = false;
             health?.ApplyDamage(info);
             if (state != State.Dead) motor.Teleport(lastSafePosition + Vector2.up * 0.5f);
+        }
+
+        /// <summary>Frena al jugador un momento (mucosidad: 0.5 = mitad de velocidad).</summary>
+        public void ApplySlow(float multiplier, float duration)
+        {
+            if (Time.time >= slowUntil || multiplier < slowMultiplier) slowMultiplier = multiplier;
+            slowUntil = Mathf.Max(slowUntil, Time.time + duration);
         }
 
         /// <summary>Lo llama PlayerHealth al recibir un golpe.</summary>

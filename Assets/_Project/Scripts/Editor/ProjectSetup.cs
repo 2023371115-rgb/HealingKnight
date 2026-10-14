@@ -70,7 +70,16 @@ namespace HealingKnight.EditorTools
         [MenuItem("Healing Knight/Abrir escena/Digestivo · Boca (secreto)", priority = 25)]
         private static void OpenBoca() => Open(SceneSetup.BocaPath);
 
-        [MenuItem("Healing Knight/Abrir escena/Sandbox", priority = 26)]
+        [MenuItem("Healing Knight/Abrir escena/Respiratorio · Nariz", priority = 30)]
+        private static void OpenNariz() => Open(SceneSetup.NarizPath);
+
+        [MenuItem("Healing Knight/Abrir escena/Respiratorio · Tráquea", priority = 31)]
+        private static void OpenTraquea() => Open(SceneSetup.TraqueaPath);
+
+        [MenuItem("Healing Knight/Abrir escena/Respiratorio · Pulmones", priority = 32)]
+        private static void OpenPulmones() => Open(SceneSetup.PulmonesPath);
+
+        [MenuItem("Healing Knight/Abrir escena/Sandbox", priority = 40)]
         private static void OpenSandbox() => Open(SceneSetup.SandboxPath);
 
         /// <summary>

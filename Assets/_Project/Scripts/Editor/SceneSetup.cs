@@ -39,6 +39,9 @@ namespace HealingKnight.EditorTools
         public static string GruesoPath => $"{Folder}/Levels/Digestivo/Digestivo_IntestinoGrueso.unity";
         public static string BocaPath => $"{Folder}/Levels/Digestivo/Digestivo_Boca.unity";
         public static string SandboxPath => $"{Folder}/Sandbox/Sandbox.unity";
+        public static string NarizPath => $"{Folder}/Levels/Respiratorio/Respiratorio_Nariz.unity";
+        public static string TraqueaPath => $"{Folder}/Levels/Respiratorio/Respiratorio_Traquea.unity";
+        public static string PulmonesPath => $"{Folder}/Levels/Respiratorio/Respiratorio_Pulmones.unity";
 
         public void Run()
         {
@@ -48,6 +51,9 @@ namespace HealingKnight.EditorTools
             CreateIfMissing(DelgadoPath, BuildDelgado);
             CreateIfMissing(GruesoPath, BuildGrueso);
             CreateIfMissing(BocaPath, BuildBoca);
+            CreateIfMissing(NarizPath, BuildNariz);
+            CreateIfMissing(TraqueaPath, BuildTraquea);
+            CreateIfMissing(PulmonesPath, BuildPulmones);
             CreateIfMissing(SandboxPath, BuildSandbox);
 
             EditorBuildSettings.scenes = new[]
@@ -58,6 +64,9 @@ namespace HealingKnight.EditorTools
                 new EditorBuildSettingsScene(DelgadoPath, true),
                 new EditorBuildSettingsScene(GruesoPath, true),
                 new EditorBuildSettingsScene(BocaPath, true),
+                new EditorBuildSettingsScene(NarizPath, true),
+                new EditorBuildSettingsScene(TraqueaPath, true),
+                new EditorBuildSettingsScene(PulmonesPath, true),
                 new EditorBuildSettingsScene(SandboxPath, true),
             };
         }
@@ -275,6 +284,26 @@ namespace HealingKnight.EditorTools
 
         // ---------- Niveles del Sistema Digestivo ----------
 
+        /// <summary>
+        /// Bloqueo tratable de los bronquiolos (GDD 5.12): mucosidad (Mucolítico) o inflamación (Antiinflamatorio).
+        /// Es una pared más alta que cualquier salto: hay que disolverla para seguir.
+        /// </summary>
+        private void Block(float x, bool mucus)
+        {
+            EnemyHealth prefab = mucus ? prefabs.Mucosidad : prefabs.Inflamacion;
+            var block = (GameObject)PrefabUtility.InstantiatePrefab(prefab.gameObject);
+            block.transform.position = new Vector3(x, FloorY, 0f);
+        }
+
+        /// <summary>Arena que termina en un bloqueo: los enemigos de la derecha aparecen antes de la pared.</summary>
+        private ArenaZone BlockedArena(string name, float triggerX, float width, string startMessage, bool mucus, params Wave[] waves)
+        {
+            ArenaZone arena = Arena(name, triggerX, width, startMessage, waves);
+            arena.rightSpawnInset = 2.2f;
+            Block(arena.rightBound - 1.2f, mucus);
+            return arena;
+        }
+
         /// <summary>Pasaje secreto; 'groundY' = piso o plataforma donde está.</summary>
         private void Secret(float x, float groundY)
         {
@@ -411,6 +440,143 @@ namespace HealingKnight.EditorTools
             Platform(38f, 2.2f, 2f);
             Platform(44f, 3.4f, 2f);
             Platform(50f, 2.2f, 2f);
+        }
+
+        // ---------- Niveles del Sistema Respiratorio (GDD: avance por bronquiolos, mucosidad e inflamación) ----------
+
+        private void BuildNariz()
+        {
+            BuildLevelBase(85f, new LevelStyle
+            {
+                background = new Color(0.22f, 0.07f, 0.1f),
+                wall = new Color(0.78f, 0.45f, 0.5f),
+                floor = new Color(0.92f, 0.62f, 0.64f),
+                floorEdge = new Color(1f, 0.85f, 0.85f),
+                blob = new Color(1f, 0.92f, 0.92f, 0.35f)
+            }, "NODO: Sistema respiratorio. Entraste por la nariz. Tu cápsula regional ahora es el MUCOLÍTICO.",
+                new Vector2(33f, 2.5f));
+
+            Platform(1f, 2.2f, 3f);
+
+            // Primer contacto: virus del resfriado y polen.
+            Arena("Arena_1_Resfriado", 8f, 18f,
+                "Rinovirus: virus del resfriado, flota y dispara. Antiviral. El polen es un alérgeno: Antihistamínico.",
+                W(0.8f, E(prefabs.Rinovirus, data.Rinovirus, 1), E(prefabs.Polen, data.Polen, 2)),
+                W(1.0f, E(prefabs.Rinovirus, data.Rinovirus, 2), E(prefabs.Polen, data.Polen, 2, SpawnSide.Left)));
+            Platform(12f, 2.4f, 3f);
+            Platform(19f, 2.4f, 3f);
+
+            // Tutorial de la mucosidad, sin enemigos: aprendes a disolverla con calma.
+            Platform(34.2f, 2.4f, 2.6f);
+            Block(41f, true);
+
+            BlockedArena("Arena_2_Estafilococo", 48f, 22f,
+                "S. aureus: vive en la nariz y ataca en grupo. Antibiótico. Luego disuelve la mucosidad con Mucolítico.", true,
+                W(0.6f, E(prefabs.SAureus, data.SAureus, 3)),
+                W(1.0f, E(prefabs.SAureus, data.SAureus, 2, SpawnSide.Left), E(prefabs.Polen, data.Polen, 2), E(prefabs.Rinovirus, data.Rinovirus, 1)));
+            Platform(53f, 2.4f, 3f);
+            Platform(60f, 2.4f, 3f);
+
+            SetMessage("Mucosidad: tapa el paso y te frena si la tocas. Dispárale MUCOLÍTICO (el antihistamínico también sirve, pero menos).", 37f);
+        }
+
+        private void BuildTraquea()
+        {
+            BuildLevelBase(95f, new LevelStyle
+            {
+                background = new Color(0.16f, 0.08f, 0.12f),
+                wall = new Color(0.82f, 0.66f, 0.7f),
+                floor = new Color(0.95f, 0.85f, 0.85f),
+                floorEdge = new Color(1f, 1f, 1f),
+                blob = new Color(1f, 0.95f, 0.95f, 0.4f) // anillos de cartílago
+            }, "NODO: Tráquea. Detectamos tos ferina: Bordetella pertussis. Antibiótico.",
+                new Vector2(36f, 3f));
+
+            Arena("Arena_1_TosFerina", 8f, 18f, "B. pertussis: bacteria de la tos ferina. Empuja fuerte al chocar. Antibiótico.",
+                W(0.6f, E(prefabs.Pertussis, data.Pertussis, 2)),
+                W(1.0f, E(prefabs.Pertussis, data.Pertussis, 2, SpawnSide.Both), E(prefabs.Rinovirus, data.Rinovirus, 1)));
+            Platform(13f, 2.2f, 3f);
+
+            // Inflamación: tutorial sin enemigos.
+            Block(29f, false);
+            SetMessage("Inflamación: el tejido hinchado cierra el paso. Dispárale ANTIINFLAMATORIO hasta que se contraiga.", 24f);
+
+            // Tramo de plataformas sobre un hueco (practica doble salto y caída lenta).
+            Platform(35f, 2.4f, 2.5f);
+            Platform(38.5f, 3.6f, 2.5f);
+            Platform(42f, 2.4f, 2.5f);
+
+            BlockedArena("Arena_2_Bronquio", 50f, 22f,
+                "Influenza: virus que dispara más rápido. Antiviral. Al final, mucosidad: Mucolítico.", true,
+                W(0.6f, E(prefabs.Pertussis, data.Pertussis, 3)),
+                W(1.0f, E(prefabs.Influenza, data.Influenza, 1), E(prefabs.Pertussis, data.Pertussis, 2, SpawnSide.Left)),
+                W(1.0f, E(prefabs.Influenza, data.Influenza, 2), E(prefabs.Polen, data.Polen, 2, SpawnSide.Both)));
+            Platform(55f, 2.4f, 3f);
+            Platform(63f, 2.4f, 3f);
+
+            Block(80f, false);
+        }
+
+        private void BuildPulmones()
+        {
+            // Paleta azul y blanca, ambiente abierto y aéreo (GDD 7.2). 3 tramos, cada uno con un bloqueo.
+            LevelManager manager = BuildLevelBase(120f, new LevelStyle
+            {
+                background = new Color(0.06f, 0.1f, 0.2f),
+                wall = new Color(0.45f, 0.62f, 0.85f),
+                floor = new Color(0.75f, 0.85f, 0.98f),
+                floorEdge = new Color(1f, 1f, 1f),
+                blob = new Color(0.85f, 0.93f, 1f, 0.35f) // alvéolos
+            }, "NODO: Pulmones. La infección se asentó en los bronquiolos. Cada tramo está bloqueado: elimina al grupo y despeja el paso.",
+                new Vector2(30f, 3f), new Vector2(37f, 3f), new Vector2(68f, 3f));
+
+            // Tramo 1
+            BlockedArena("Tramo_1_Neumonia", 8f, 20f,
+                "S. pneumoniae (neumonía): atacan en grupo. Antibiótico.", true,
+                W(0.6f, E(prefabs.Neumococo, data.Neumococo, 3)),
+                W(1.0f, E(prefabs.Neumococo, data.Neumococo, 2, SpawnSide.Left), E(prefabs.Influenza, data.Influenza, 1)));
+            Platform(13f, 2.4f, 3f);
+
+            // Alvéolos: plataformas sobre huecos.
+            Platform(31.5f, 2.6f, 2.4f);
+            Platform(34.5f, 4f, 2.2f);
+            Platform(38.5f, 2.6f, 2.4f);
+            Platform(41.5f, 4.2f, 2.2f);
+
+            // Tramo 2
+            BlockedArena("Tramo_2_Influenza", 46f, 20f,
+                "Influenza en el aire y neumococos en el piso. Al final, inflamación: Antiinflamatorio.", false,
+                W(0.6f, E(prefabs.Influenza, data.Influenza, 2)),
+                W(1.0f, E(prefabs.Neumococo, data.Neumococo, 3, SpawnSide.Both), E(prefabs.Influenza, data.Influenza, 1)));
+            Platform(52f, 2.4f, 3f);
+            Platform(58f, 3.4f, 3f);
+
+            Platform(69.5f, 2.6f, 2.4f);
+
+            // Tramo 3: clímax (sin jefe). La mayor concentración de enemigos y un bloqueo doble.
+            BlockedArena("Tramo_3_FocoTuberculosis", 78f, 26f,
+                "NODO: ¡Foco de tuberculosis! M. tuberculosis es resistente: necesita muchas dosis de antibiótico.", true,
+                W(0.6f, E(prefabs.Neumococo, data.Neumococo, 4, SpawnSide.Both)),
+                W(1.0f, E(prefabs.Tuberculosis, data.Tuberculosis, 1), E(prefabs.Influenza, data.Influenza, 2)),
+                W(1.2f, E(prefabs.Tuberculosis, data.Tuberculosis, 2, SpawnSide.Both), E(prefabs.Neumococo, data.Neumococo, 3),
+                    E(prefabs.Influenza, data.Influenza, 2, SpawnSide.Left)));
+            Platform(84f, 2.4f, 3f);
+            Platform(92f, 3.4f, 3f);
+            Block(78f + 26f - 3f + 2.2f, false); // detrás de la mucosidad, la inflamación
+
+            // Cierre de la entrega de diciembre (GDD 8.6).
+            SetupUtils.SetString(manager, "completeMessage",
+                "NODO: Fórmula 2 enviada a Aurelis. Alerta: la infección avanza hacia el cerebro...");
+            SetupUtils.SetFloat(manager, "completeDelay", 4.5f);
+        }
+
+        /// <summary>Mensaje de NODO que aparece al pasar por una X (tutoriales sin arena).</summary>
+        private static void SetMessage(string text, float x)
+        {
+            var go = new GameObject("Mensaje");
+            go.transform.position = new Vector3(x, FloorY, 0f);
+            var trigger = go.AddComponent<MessageTrigger>();
+            SetupUtils.SetString(trigger, "message", text);
         }
 
         private void BuildSandbox()

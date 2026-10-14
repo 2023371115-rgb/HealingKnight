@@ -41,6 +41,9 @@ namespace HealingKnight.Gameplay.Level
         public float rightBound = 8f;
         [Tooltip("Y del piso de la arena (donde caen los enemigos de suelo).")]
         public float floorY = 0f;
+        [Tooltip("Los enemigos que entran por la derecha aparecen esta distancia más adentro " +
+                 "(para que no caigan detrás de un bloqueo de mucosidad o inflamación).")]
+        public float rightSpawnInset = 0f;
 
         [Header("Oleadas")]
         public List<Wave> waves = new List<Wave>();
@@ -107,7 +110,7 @@ namespace HealingKnight.Gameplay.Level
                 for (int i = 0; i < entry.count; i++, n++)
                 {
                     bool fromRight = entry.side == SpawnSide.Right || (entry.side == SpawnSide.Both && n % 2 == 0);
-                    float x = fromRight ? rightBound - 0.8f - (i % 3) * 0.6f : leftBound + 0.8f + (i % 3) * 0.6f;
+                    float x = fromRight ? rightBound - 0.8f - rightSpawnInset - (i % 3) * 0.6f : leftBound + 0.8f + (i % 3) * 0.6f;
                     // Los de suelo caen desde arriba de la pantalla (como en Metal Slug); los voladores entran flotando.
                     // Los jefes (sin motor de física) salen directo del piso.
                     bool flying = entry.data != null && entry.data.movement == EnemyMovement.Flying;

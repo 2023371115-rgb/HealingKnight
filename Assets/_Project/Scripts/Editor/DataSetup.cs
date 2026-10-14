@@ -16,8 +16,11 @@ namespace HealingKnight.EditorTools
         public EffectivenessTable Table;
         public PlayerConfig PlayerConfig;
         public EnemyData HPylori, Giardia, Rotavirus, Entamoeba, CDifficile, Oxiuro, SMutans, Lombriz;
+        public EnemyData Rinovirus, Polen, SAureus, Pertussis, Neumococo, Influenza, Tuberculosis;
+        public EnemyData Mucosidad, Inflamacion;
         public GameCatalog Catalog;
         public LevelData DigestivoEstomago, DigestivoDelgado, DigestivoGrueso, DigestivoBoca;
+        public LevelData RespiratorioNariz, RespiratorioTraquea, RespiratorioPulmones;
 
         public void Run()
         {
@@ -25,6 +28,7 @@ namespace HealingKnight.EditorTools
             CreateEffectivenessTable();
             CreatePlayerConfig();
             CreateEnemies();
+            CreateRespiratoryEnemies();
             CreateCatalog();
         }
 
@@ -44,7 +48,7 @@ namespace HealingKnight.EditorTools
             Antibiotico = Med("Antibiotico", "Antibiótico", new Color(0.25f, 0.55f, 1f), false, "Efectivo contra bacterias.");
             Antiviral = Med("Antiviral", "Antiviral", new Color(0.85f, 0.95f, 1f), false, "Efectivo contra virus.");
             Antiinflamatorio = Med("Antiinflamatorio", "Antiinflamatorio", new Color(1f, 0.5f, 0.75f), false, "Reduce la inflamación. Parcial contra bacterias y virus.");
-            Antihistaminico = Med("Antihistaminico", "Antihistamínico", new Color(0.7f, 0.5f, 1f), false, "Parcial contra parásitos y mucosidad.");
+            Antihistaminico = Med("Antihistaminico", "Antihistamínico", new Color(0.7f, 0.5f, 1f), false, "Efectivo contra alérgenos (polen). Parcial contra parásitos y mucosidad.");
             Antiparasitario = Med("Antiparasitario", "Antiparasitario", new Color(1f, 0.72f, 0.1f), true, "Cápsula regional del Sistema Digestivo. Efectivo contra parásitos.");
             Mucolitico = Med("Mucolitico", "Mucolítico", new Color(0.55f, 1f, 0.6f), true, "Cápsula regional del Sistema Respiratorio. Disuelve la mucosidad.");
         }
@@ -72,7 +76,18 @@ namespace HealingKnight.EditorTools
 
                 t.Set(ThreatType.Mucosidad, Mucolitico, Effectiveness.Effective);
                 t.Set(ThreatType.Mucosidad, Antihistaminico, Effectiveness.Partial);
+
+                t.Set(ThreatType.Alergeno, Antihistaminico, Effectiveness.Effective);
+                t.Set(ThreatType.Alergeno, Antiinflamatorio, Effectiveness.Partial);
             });
+
+            // Tablas creadas antes de que existieran los alérgenos: se completan sin tocar lo demás.
+            if (Table.Evaluate(ThreatType.Alergeno, Antihistaminico) != Effectiveness.Effective)
+            {
+                Table.Set(ThreatType.Alergeno, Antihistaminico, Effectiveness.Effective);
+                Table.Set(ThreatType.Alergeno, Antiinflamatorio, Effectiveness.Partial);
+                UnityEditor.EditorUtility.SetDirty(Table);
+            }
         }
 
         private void CreatePlayerConfig()
@@ -176,6 +191,107 @@ namespace HealingKnight.EditorTools
             });
         }
 
+        private void CreateRespiratoryEnemies()
+        {
+            // Sistema Respiratorio: patógenos reales de cada zona (GDD 5.11: bacterias en grupo y virus que flotan y disparan).
+            Rinovirus = Enemy("Virus_Rinovirus", e =>
+            {
+                e.displayName = "Rinovirus (resfriado)";
+                e.threat = ThreatType.Virus;
+                e.movement = EnemyMovement.Flying; e.flyHeight = 2.4f;
+                e.maxHealth = 20f; e.moveSpeed = 2f;
+                e.attackType = EnemyAttackType.Ranged;
+                e.attackDistance = 5f; e.attackWindup = 0.4f; e.attackCooldown = 2.5f; e.attackDamage = 10f;
+                e.projectileColor = new Color(0.75f, 1f, 0.55f);
+                e.tint = new Color(0.6f, 0.9f, 0.45f);
+            });
+
+            Polen = Enemy("Alergeno_Polen", e =>
+            {
+                e.displayName = "Polen (alérgeno)";
+                e.threat = ThreatType.Alergeno;
+                e.movement = EnemyMovement.Flying; e.flyHeight = 0.9f;
+                e.maxHealth = 14f; e.moveSpeed = 1.8f;
+                e.attackDistance = 1f; e.attackWindup = 0.5f; e.attackCooldown = 1.8f; e.attackDamage = 6f; e.attackKnockback = 3f;
+                e.tint = new Color(1f, 0.85f, 0.25f);
+                e.visualScale = 0.75f;
+            });
+
+            SAureus = Enemy("Bacteria_SAureus", e =>
+            {
+                e.displayName = "S. aureus";
+                e.threat = ThreatType.Bacteria;
+                e.maxHealth = 20f; e.moveSpeed = 3f;
+                e.attackDistance = 1f; e.attackWindup = 0.35f; e.attackDamage = 10f;
+                e.tint = new Color(0.95f, 0.8f, 0.35f);
+            });
+
+            Pertussis = Enemy("Bacteria_Pertussis", e =>
+            {
+                e.displayName = "B. pertussis (tos ferina)";
+                e.threat = ThreatType.Bacteria;
+                e.maxHealth = 24f; e.moveSpeed = 3.2f;
+                e.attackDistance = 1.1f; e.attackWindup = 0.35f; e.attackDamage = 10f; e.attackKnockback = 6f;
+                e.tint = new Color(0.55f, 0.75f, 0.95f);
+            });
+
+            Neumococo = Enemy("Bacteria_Neumococo", e =>
+            {
+                e.displayName = "S. pneumoniae (neumonía)";
+                e.threat = ThreatType.Bacteria;
+                e.maxHealth = 20f; e.moveSpeed = 3.3f; e.aggroRange = 16f;
+                e.attackDistance = 1f; e.attackWindup = 0.3f; e.attackDamage = 10f;
+                e.tint = new Color(0.45f, 0.85f, 0.75f);
+                e.visualScale = 0.9f;
+            });
+
+            Influenza = Enemy("Virus_Influenza", e =>
+            {
+                e.displayName = "Influenza";
+                e.threat = ThreatType.Virus;
+                e.movement = EnemyMovement.Flying; e.flyHeight = 2.8f;
+                e.maxHealth = 24f; e.moveSpeed = 2.2f;
+                e.attackType = EnemyAttackType.Ranged;
+                e.attackDistance = 5.5f; e.attackWindup = 0.4f; e.attackCooldown = 2.2f; e.attackDamage = 10f;
+                e.projectileSpeed = 8f;
+                e.projectileColor = new Color(0.6f, 0.8f, 1f);
+                e.tint = new Color(0.55f, 0.65f, 1f);
+                e.visualScale = 1.1f;
+            });
+
+            Tuberculosis = Enemy("Bacteria_Tuberculosis", e =>
+            {
+                e.displayName = "M. tuberculosis (resistente)";
+                e.threat = ThreatType.Bacteria;
+                e.maxHealth = 70f; e.moveSpeed = 1.4f;
+                e.attackDistance = 1.4f; e.attackWindup = 0.6f; e.attackDamage = 15f; e.attackKnockback = 6f;
+                e.knockbackResistance = 0.7f; e.linfocitoCharge = 3;
+                e.tint = new Color(0.75f, 0.55f, 0.45f);
+                e.visualScale = 1.4f;
+            });
+
+            // Bloqueos (GDD 5.12): usan la misma vida y tabla de efectividad que los enemigos.
+            Mucosidad = Enemy("Bloqueo_Mucosidad", e =>
+            {
+                e.displayName = "Mucosidad";
+                e.threat = ThreatType.Mucosidad;
+                e.maxHealth = 60f;
+                e.meleeDamageTakenMultiplier = 0.25f;
+                e.knockbackResistance = 1f; e.hurtStunTime = 0f; e.linfocitoCharge = 0;
+                e.tint = new Color(0.8f, 0.95f, 0.7f, 0.92f);
+            });
+
+            Inflamacion = Enemy("Bloqueo_Inflamacion", e =>
+            {
+                e.displayName = "Inflamación";
+                e.threat = ThreatType.Inflamacion;
+                e.maxHealth = 80f;
+                e.meleeDamageTakenMultiplier = 0.25f;
+                e.knockbackResistance = 1f; e.hurtStunTime = 0f; e.linfocitoCharge = 0;
+                e.tint = new Color(0.95f, 0.4f, 0.45f);
+            });
+        }
+
         private LevelData Level(string system, string file, string id, string name, string scene, bool formula, string objective)
         {
             return SetupUtils.LoadOrCreate<LevelData>($"{DataFolder}/Systems/{system}/{file}.asset", l =>
@@ -186,6 +302,19 @@ namespace HealingKnight.EditorTools
                 l.grantsFormula = formula;
                 l.objective = objective;
             });
+        }
+
+        /// <summary>Como Level, pero si el asset ya existía sin escena (nivel "próximamente") le pone la escena y el objetivo.</summary>
+        private LevelData PlayableLevel(string system, string file, string id, string name, string scene, bool formula, string objective)
+        {
+            LevelData level = Level(system, file, id, name, scene, formula, objective);
+            if (string.IsNullOrEmpty(level.sceneName))
+            {
+                level.sceneName = scene;
+                level.objective = objective;
+                UnityEditor.EditorUtility.SetDirty(level);
+            }
+            return level;
         }
 
         private SystemData MakeSystem(string folder, string id, string name, string number, MedicationData regional,
@@ -226,12 +355,17 @@ namespace HealingKnight.EditorTools
                 "Los patógenos se ingirieron en cápsulas y se instalaron aquí primero.",
                 DigestivoEstomago, DigestivoDelgado, DigestivoGrueso, DigestivoBoca);
 
+            RespiratorioNariz = PlayableLevel("Respiratorio", "01_Nariz", "respiratorio_nariz", "Nariz", "Respiratorio_Nariz", false,
+                "Rinovirus, polen y S. aureus. Conoce el Mucolítico: disuelve la mucosidad.");
+            RespiratorioTraquea = PlayableLevel("Respiratorio", "02_Traquea", "respiratorio_traquea", "Tráquea", "Respiratorio_Traquea", false,
+                "Tos ferina (Bordetella pertussis). La inflamación cierra el paso: Antiinflamatorio.");
+            RespiratorioPulmones = PlayableLevel("Respiratorio", "03_Pulmones", "respiratorio_pulmones", "Pulmones", "Respiratorio_Pulmones", true,
+                "Recorre los bronquiolos: neumonía, influenza y el foco de tuberculosis. Fórmula 2.");
+
             SystemData respiratorio = MakeSystem("Respiratorio", "respiratorio", "Sistema Respiratorio", "II", Mucolitico,
                 new Color(0.45f, 0.75f, 1f), new Vector2(0.5f, 0.6f),
                 "La mucosidad atrapa a los patógenos y los protege del medicamento.",
-                Level("Respiratorio", "01_Nariz", "respiratorio_nariz", "Nariz", "", false, "Rinovirus y alérgenos."),
-                Level("Respiratorio", "02_Traquea", "respiratorio_traquea", "Tráquea", "", false, "Tos ferina (Bordetella pertussis)."),
-                Level("Respiratorio", "03_Pulmones", "respiratorio_pulmones", "Pulmones", "", true, "Neumonía, influenza y el foco de tuberculosis."));
+                RespiratorioNariz, RespiratorioTraquea, RespiratorioPulmones);
 
             SystemData nervioso = MakeSystem("Nervioso", "nervioso", "Sistema Nervioso", "III", null,
                 new Color(0.7f, 0.5f, 1f), new Vector2(0.5f, 0.9f),

@@ -7,7 +7,9 @@ namespace HealingKnight.Core.Combat
         Virus,
         Parasito,
         Inflamacion,
-        Mucosidad
+        Mucosidad,
+        /// <summary>Polen y otros alérgenos (nariz). Se tratan con antihistamínico.</summary>
+        Alergeno
     }
 
     /// <summary>Resultado de aplicar un medicamento a una amenaza.</summary>
