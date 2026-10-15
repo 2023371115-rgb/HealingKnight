@@ -515,11 +515,13 @@ namespace HealingKnight.EditorTools
             SetupUtils.SetVector2(acid, "size", new Vector2(2.8f, 0.5f));
 
             // Charco sobre el piso (el objeto se coloca a la altura del piso).
-            SetupUtils.SpriteChild(root.transform, "Puddle", PlaceholderArt.Circle, new Color(0.85f, 0.95f, 0.25f, 0.9f),
+            SetupUtils.SpriteChild(root.transform, "Glow", PlaceholderArt.Circle, new Color(0.5f, 1f, 0.15f, 0.25f),
+                new Vector3(0f, 0.25f, 0f), new Vector2(3.8f, 1.2f), 1);
+            SetupUtils.SpriteChild(root.transform, "Puddle", PlaceholderArt.Circle, new Color(0.5f, 1f, 0.15f, 0.95f),
                 Vector3.zero, new Vector2(3.2f, 0.35f), 2);
-            SetupUtils.SpriteChild(root.transform, "Bubble1", PlaceholderArt.Circle, new Color(1f, 1f, 0.6f, 0.9f),
+            SetupUtils.SpriteChild(root.transform, "Bubble1", PlaceholderArt.Circle, new Color(0.85f, 1f, 0.6f, 0.9f),
                 new Vector3(-0.6f, 0.12f, 0f), new Vector2(0.25f, 0.25f), 3);
-            SetupUtils.SpriteChild(root.transform, "Bubble2", PlaceholderArt.Circle, new Color(1f, 1f, 0.6f, 0.9f),
+            SetupUtils.SpriteChild(root.transform, "Bubble2", PlaceholderArt.Circle, new Color(0.85f, 1f, 0.6f, 0.9f),
                 new Vector3(0.7f, 0.08f, 0f), new Vector2(0.18f, 0.18f), 3);
             return root;
         }

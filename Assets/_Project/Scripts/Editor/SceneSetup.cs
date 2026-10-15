@@ -141,14 +141,22 @@ namespace HealingKnight.EditorTools
             if (intensityProp != null && intensityProp.CanWrite) intensityProp.SetValue(light, 1f);
         }
 
-        private enum Decor { Blobs, Rings, Alveoli }
+        private enum Decor { Blobs, Rings, Alveoli, Veins, Villi, Folds }
 
         private struct LevelStyle
         {
             public Color background, wall, floor, floorEdge, blob;
             public Decor decor;
-            /// <summary>Si alfa > 0: cilios en el piso y luz al final del nivel (Sistema Respiratorio).</summary>
+            /// <summary>Si alfa > 0: luz al final del nivel y bruma de color.</summary>
             public Color glow;
+            /// <summary>Cilios a lo largo del piso (Sistema Respiratorio).</summary>
+            public bool cilia;
+            /// <summary>Si alfa > 0: líquido brillante en el fondo de los huecos (ácido, bilis...). Caer sigue costando vida.</summary>
+            public Color pitLiquid;
+            /// <summary>Si alfa > 0: gotas que escurren de las plataformas y la orilla del piso.</summary>
+            public Color drip;
+            /// <summary>Venas o detalles del fondo (Decor.Veins/Villi/Folds).</summary>
+            public Color detail;
         }
 
         private const float FloorY = 0f;   // la parte de arriba del piso
@@ -183,6 +191,11 @@ namespace HealingKnight.EditorTools
             }
             FloorSegment($"Floor_{index}", segmentStart, endX + 15f);
 
+            if (style.pitLiquid.a > 0f)
+            {
+                foreach (Vector2 pit in sorted) PitLiquid(pit.x, pit.y);
+            }
+
             var random = new System.Random(length.GetHashCode());
             switch (style.decor)
             {
@@ -212,6 +225,63 @@ namespace HealingKnight.EditorTools
                     }
                     break;
 
+                case Decor.Veins: // estómago: venas cian ramificadas y bultos de tejido
+                    for (float x = startX - 5f; x < endX + 10f; x += 6f + (float)random.NextDouble() * 4f)
+                    {
+                        float y = FloorY + 1f;
+                        float angle = 90f + (float)(random.NextDouble() - 0.5) * 30f;
+                        for (int i = 0; i < 5; i++)
+                        {
+                            float len = 1.6f + (float)random.NextDouble() * 1.2f;
+                            float rad = angle * Mathf.Deg2Rad;
+                            Vector3 mid = new Vector3(x + Mathf.Cos(rad) * len * 0.5f, y + Mathf.Sin(rad) * len * 0.5f, 0f);
+                            SetupUtils.SpriteChild(environment, "Vena", PlaceholderArt.Capsule, style.detail, mid, new Vector2(len, 0.16f), -148)
+                                .transform.localRotation = Quaternion.Euler(0f, 0f, angle);
+                            // Ramita
+                            if (i % 2 == 1)
+                                SetupUtils.SpriteChild(environment, "Ramita", PlaceholderArt.Capsule, style.detail,
+                                    mid + new Vector3(0.4f, 0.2f, 0f), new Vector2(len * 0.6f, 0.1f), -148)
+                                    .transform.localRotation = Quaternion.Euler(0f, 0f, angle - 45f);
+                            x += Mathf.Cos(rad) * len;
+                            y += Mathf.Sin(rad) * len;
+                            angle += (float)(random.NextDouble() - 0.5) * 50f;
+                        }
+                    }
+                    for (float x = startX - 5f; x < endX + 10f; x += 7f + (float)random.NextDouble() * 5f)
+                    {
+                        float size = 1.5f + (float)random.NextDouble() * 2f;
+                        Vector3 p = new Vector3(x, FloorY + 4f + (float)random.NextDouble() * 4f, 0f);
+                        SetupUtils.SpriteChild(environment, "Bulto", PlaceholderArt.Circle, style.blob, p, new Vector2(size, size * 1.3f), -150);
+                        SetupUtils.SpriteChild(environment, "Brillo", PlaceholderArt.Circle, new Color(1f, 1f, 1f, 0.12f),
+                            p + new Vector3(-size * 0.2f, size * 0.3f, 0f), new Vector2(size * 0.3f, size * 0.4f), -149);
+                    }
+                    break;
+
+                case Decor.Villi: // intestino delgado: vellosidades (dedos) en el fondo
+                    for (float x = startX - 5f; x < endX + 10f; x += 0.9f + (float)random.NextDouble() * 0.6f)
+                    {
+                        float h = 1.8f + (float)random.NextDouble() * 2.2f;
+                        float w = 0.55f + (float)random.NextDouble() * 0.25f;
+                        SetupUtils.SpriteChild(environment, "Vellosidad", PlaceholderArt.CircleBottom, style.blob,
+                            new Vector3(x, FloorY - 0.3f, 0f), new Vector2(w, h), -150);
+                        SetupUtils.SpriteChild(environment, "VenaVellosidad", PlaceholderArt.Square, style.detail,
+                            new Vector3(x, FloorY - 0.3f, 0f), new Vector2(0.06f, h * 0.8f), -149);
+                    }
+                    break;
+
+                case Decor.Folds: // intestino grueso: pliegues (haustras) en arco
+                    for (float x = startX - 5f; x < endX + 10f; x += 4.5f)
+                    {
+                        SetupUtils.SpriteChild(environment, "Pliegue", PlaceholderArt.Circle, style.blob,
+                            new Vector3(x, FloorY + 4.5f, 0f), new Vector2(4.2f, 9f), -151);
+                        SetupUtils.SpriteChild(environment, "PliegueSombra", PlaceholderArt.Circle, Color.Lerp(style.wall, Color.black, 0.25f),
+                            new Vector3(x + 0.35f, FloorY + 4.5f, 0f), new Vector2(3.5f, 8.2f), -150);
+                        SetupUtils.SpriteChild(environment, "VenaPliegue", PlaceholderArt.Capsule, style.detail,
+                            new Vector3(x - 1.6f, FloorY + 4.5f, 0f), new Vector2(5f, 0.12f), -149)
+                            .transform.localRotation = Quaternion.Euler(0f, 0f, 80f);
+                    }
+                    break;
+
                 default:
                     for (float x = startX - 5f; x < endX + 10f; x += 4f + (float)random.NextDouble() * 3f)
                     {
@@ -223,9 +293,32 @@ namespace HealingKnight.EditorTools
                     break;
             }
 
+            if (style.drip.a > 0f)
+            {
+                // Gotas que escurren de la orilla del piso hacia los huecos y del borde de la pared.
+                for (float x = startX - 5f; x < endX + 10f; x += 1.5f + (float)random.NextDouble() * 2f)
+                {
+                    float len = 0.3f + (float)random.NextDouble() * 0.6f;
+                    SetupUtils.SpriteChild(environment, "Gota", PlaceholderArt.Capsule, style.drip,
+                        new Vector3(x, FloorY + 9.6f - len * 0.5f, 0f), new Vector2(len, 0.16f), -147).transform.localRotation = Quaternion.Euler(0f, 0f, 90f);
+                }
+            }
+
             if (style.glow.a > 0f)
             {
-                // Cilios a lo largo del piso y la luz del final del conducto (como el arte de referencia).
+                // Bruma de color abajo y luz al final del nivel (como el arte de referencia).
+                for (float x = startX - 5f; x < endX + 10f; x += 6f)
+                    SetupUtils.SpriteChild(environment, "Bruma", PlaceholderArt.Circle, new Color(style.glow.r, style.glow.g, style.glow.b, 0.08f),
+                        new Vector3(x, FloorY + 1.2f, 0f), new Vector2(9f, 3.5f), -145);
+                SetupUtils.SpriteChild(environment, "LuzSalida", PlaceholderArt.Circle, new Color(style.glow.r, style.glow.g, style.glow.b, 0.35f),
+                    new Vector3(endX + 2f, FloorY + 3.5f, 0f), new Vector2(3.5f, 7f), -140);
+                SetupUtils.SpriteChild(environment, "LuzSalidaCentro", PlaceholderArt.Circle, new Color(0.9f, 1f, 1f, 0.6f),
+                    new Vector3(endX + 2f, FloorY + 3.5f, 0f), new Vector2(1.6f, 5f), -139);
+            }
+
+            if (style.cilia)
+            {
+                // Cilios a lo largo del piso.
                 for (float x = startX - 10f; x < endX + 12f; x += 0.45f)
                 {
                     float h = 0.25f + (float)random.NextDouble() * 0.25f;
@@ -233,10 +326,6 @@ namespace HealingKnight.EditorTools
                         new Vector3(x, FloorY - 0.05f, 0f), new Vector2(0.08f, h), -95).transform.localRotation =
                         Quaternion.Euler(0f, 0f, (float)(random.NextDouble() - 0.5) * 30f);
                 }
-                SetupUtils.SpriteChild(environment, "LuzSalida", PlaceholderArt.Circle, new Color(style.glow.r, style.glow.g, style.glow.b, 0.35f),
-                    new Vector3(endX + 2f, FloorY + 3.5f, 0f), new Vector2(3.5f, 7f), -140);
-                SetupUtils.SpriteChild(environment, "LuzSalidaCentro", PlaceholderArt.Circle, new Color(0.9f, 1f, 1f, 0.6f),
-                    new Vector3(endX + 2f, FloorY + 3.5f, 0f), new Vector2(1.6f, 5f), -139);
             }
 
             Vector2 spawn = new Vector2(startX + 3f, FloorY + 0.05f);
@@ -302,6 +391,37 @@ namespace HealingKnight.EditorTools
                 new Vector3(0f, -thickness, 0f), new Vector2(width, thickness), -90);
             SetupUtils.SpriteChild(go.transform, "Edge", PlaceholderArt.Square, currentStyle.floorEdge,
                 new Vector3(0f, -0.12f, 0f), new Vector2(width, 0.12f), -89);
+
+            if (currentStyle.drip.a > 0f)
+            {
+                // Plataforma de carne tipo hongo: borde redondeado y gotas colgando.
+                SetupUtils.SpriteChild(go.transform, "Tapa", PlaceholderArt.Circle, Color.Lerp(currentStyle.floor, Color.white, 0.12f),
+                    new Vector3(0f, -0.18f, 0f), new Vector2(width + 0.4f, 0.5f), -91);
+                int drips = Mathf.Max(2, Mathf.RoundToInt(width / 0.8f));
+                for (int i = 0; i < drips; i++)
+                {
+                    float x = -width * 0.5f + (i + 0.5f) * width / drips + ((i * 37) % 10 - 5) * 0.02f;
+                    float len = 0.25f + (i % 3) * 0.18f;
+                    SetupUtils.SpriteChild(go.transform, "Gota" + i, PlaceholderArt.Capsule, currentStyle.drip,
+                        new Vector3(x, -thickness - len * 0.5f + 0.05f, 0f), new Vector2(len, 0.14f), -88)
+                        .transform.localRotation = Quaternion.Euler(0f, 0f, 90f);
+                }
+            }
+        }
+
+        /// <summary>Líquido en el fondo de un hueco (solo se ve; caer sigue costando vida).</summary>
+        private void PitLiquid(float fromX, float width)
+        {
+            Color c = currentStyle.pitLiquid;
+            SetupUtils.SpriteChild(environment, "Liquido", PlaceholderArt.Square, new Color(c.r * 0.6f, c.g * 0.6f, c.b * 0.6f, 0.95f),
+                new Vector3(fromX + width * 0.5f, FloorY - 4f, 0f), new Vector2(width, 3.1f), -98);
+            SetupUtils.SpriteChild(environment, "LiquidoSuperficie", PlaceholderArt.Square, c,
+                new Vector3(fromX + width * 0.5f, FloorY - 1.05f, 0f), new Vector2(width, 0.18f), -97);
+            SetupUtils.SpriteChild(environment, "LiquidoBrillo", PlaceholderArt.Circle, new Color(c.r, c.g, c.b, 0.25f),
+                new Vector3(fromX + width * 0.5f, FloorY - 0.9f, 0f), new Vector2(width * 1.2f, 1.2f), -96);
+            for (int i = 0; i < 3; i++)
+                SetupUtils.SpriteChild(environment, "Burbuja", PlaceholderArt.Circle, new Color(1f, 1f, 1f, 0.35f),
+                    new Vector3(fromX + width * (0.25f + i * 0.25f), FloorY - 0.7f + (i % 2) * 0.35f, 0f), new Vector2(0.22f, 0.22f), -95);
         }
 
         private ArenaZone Arena(string name, float triggerX, float width, string startMessage, params Wave[] waves)
@@ -367,11 +487,17 @@ namespace HealingKnight.EditorTools
         {
             BuildLevelBase(100f, new LevelStyle
             {
-                background = new Color(0.22f, 0.08f, 0.04f),
-                wall = new Color(0.6f, 0.28f, 0.2f),
-                floor = new Color(0.82f, 0.48f, 0.36f),
-                floorEdge = new Color(0.95f, 0.75f, 0.35f),
-                blob = new Color(0.9f, 0.8f, 0.3f, 0.35f)
+                // Estómago: tejido carmesí, plataformas de carne rosada que escurren ácido verde brillante.
+                background = new Color(0.1f, 0.02f, 0.04f),
+                wall = new Color(0.32f, 0.06f, 0.1f),
+                floor = new Color(0.6f, 0.2f, 0.28f),
+                floorEdge = new Color(0.95f, 0.45f, 0.55f),
+                blob = new Color(0.55f, 0.15f, 0.22f, 0.6f),
+                decor = Decor.Veins,
+                detail = new Color(0.15f, 0.55f, 0.6f, 0.7f),
+                pitLiquid = new Color(0.5f, 1f, 0.15f, 1f),
+                drip = new Color(0.55f, 1f, 0.2f, 0.9f),
+                glow = new Color(0.45f, 1f, 0.2f, 1f)
             }, "NODO: Estás en el estómago. Muévete con A/D, salta con K o Espacio. Apunta con W (W + A/D = diagonal).",
                 new Vector2(31f, 2.5f), new Vector2(65.5f, 2.5f));
 
@@ -412,11 +538,17 @@ namespace HealingKnight.EditorTools
         {
             BuildLevelBase(95f, new LevelStyle
             {
-                background = new Color(0.2f, 0.06f, 0.1f),
-                wall = new Color(0.58f, 0.25f, 0.35f),
-                floor = new Color(0.8f, 0.45f, 0.5f),
-                floorEdge = new Color(0.92f, 0.62f, 0.65f),
-                blob = new Color(0.75f, 0.4f, 0.5f, 0.5f)
+                // Intestino delgado: tejido rosa coral con vellosidades y bilis amarilla verdosa.
+                background = new Color(0.11f, 0.03f, 0.05f),
+                wall = new Color(0.36f, 0.1f, 0.16f),
+                floor = new Color(0.72f, 0.3f, 0.36f),
+                floorEdge = new Color(1f, 0.6f, 0.62f),
+                blob = new Color(0.8f, 0.38f, 0.45f, 0.75f),
+                decor = Decor.Villi,
+                detail = new Color(0.2f, 0.6f, 0.65f, 0.55f),
+                pitLiquid = new Color(0.8f, 0.95f, 0.2f, 1f),
+                drip = new Color(0.8f, 0.95f, 0.25f, 0.85f),
+                glow = new Color(0.75f, 1f, 0.3f, 1f)
             }, "NODO: Intestino delgado. Aquí viven los parásitos: usa la cápsula Antiparasitario.",
                 new Vector2(28f, 2.5f), new Vector2(55f, 3f));
 
@@ -442,11 +574,17 @@ namespace HealingKnight.EditorTools
         {
             BuildLevelBase(95f, new LevelStyle
             {
-                background = new Color(0.16f, 0.07f, 0.06f),
-                wall = new Color(0.5f, 0.3f, 0.25f),
-                floor = new Color(0.68f, 0.45f, 0.38f),
-                floorEdge = new Color(0.8f, 0.58f, 0.48f),
-                blob = new Color(0.55f, 0.35f, 0.3f, 0.5f)
+                // Intestino grueso: más oscuro y pesado, pliegues en arco y líquido verde olivo turbio.
+                background = new Color(0.07f, 0.03f, 0.03f),
+                wall = new Color(0.26f, 0.08f, 0.09f),
+                floor = new Color(0.5f, 0.2f, 0.2f),
+                floorEdge = new Color(0.85f, 0.42f, 0.4f),
+                blob = new Color(0.42f, 0.13f, 0.15f, 0.85f),
+                decor = Decor.Folds,
+                detail = new Color(0.15f, 0.45f, 0.45f, 0.6f),
+                pitLiquid = new Color(0.55f, 0.7f, 0.15f, 1f),
+                drip = new Color(0.6f, 0.75f, 0.2f, 0.8f),
+                glow = new Color(0.55f, 0.85f, 0.2f, 1f)
             }, "NODO: Intestino grueso. La lombriz está cerca.",
                 new Vector2(29f, 3f));
 
@@ -472,11 +610,15 @@ namespace HealingKnight.EditorTools
         {
             BuildLevelBase(70f, new LevelStyle
             {
-                background = new Color(0.25f, 0.06f, 0.1f),
-                wall = new Color(0.55f, 0.2f, 0.28f),
-                floor = new Color(0.78f, 0.38f, 0.45f),
-                floorEdge = new Color(0.95f, 0.92f, 0.85f),
-                blob = new Color(0.95f, 0.92f, 0.85f, 0.5f)
+                // Boca: encías rosas, dientes blancos de fondo y saliva.
+                background = new Color(0.14f, 0.03f, 0.06f),
+                wall = new Color(0.45f, 0.12f, 0.2f),
+                floor = new Color(0.85f, 0.4f, 0.5f),
+                floorEdge = new Color(1f, 0.97f, 0.9f),
+                blob = new Color(0.97f, 0.95f, 0.88f, 0.85f),
+                decor = Decor.Blobs,
+                drip = new Color(0.85f, 0.95f, 1f, 0.6f),
+                glow = new Color(0.9f, 0.95f, 1f, 1f)
             }, "NIVEL SECRETO · BOCA. NODO: Placa bacteriana detectada.");
 
             // Dientes: plataformas blancas.
@@ -510,7 +652,8 @@ namespace HealingKnight.EditorTools
                 floorEdge = RespGlow,
                 blob = new Color(0.7f, 0.32f, 0.58f, 0.35f),
                 decor = Decor.Blobs,
-                glow = RespGlow
+                glow = RespGlow,
+                cilia = true
             }, "NODO: Sistema respiratorio. Entraste por la nariz. Tu cápsula regional ahora es el MUCOLÍTICO.",
                 new Vector2(26f, 3f), new Vector2(44f, 3f));
 
@@ -555,7 +698,8 @@ namespace HealingKnight.EditorTools
                 floorEdge = RespGlow,
                 blob = new Color(0.6f, 0.52f, 0.85f, 0.3f), // anillos de cartílago
                 decor = Decor.Rings,
-                glow = RespGlow
+                glow = RespGlow,
+                cilia = true
             }, "NODO: Tráquea. Detectamos tos ferina: Bordetella pertussis. Antibiótico.",
                 new Vector2(31f, 4f), new Vector2(44.5f, 5f), new Vector2(76f, 3f));
 
@@ -601,7 +745,8 @@ namespace HealingKnight.EditorTools
                 floorEdge = RespGlow,
                 blob = new Color(0.85f, 0.7f, 0.95f, 0.28f), // alvéolos
                 decor = Decor.Alveoli,
-                glow = new Color(0.55f, 1f, 0.95f, 1f)
+                glow = new Color(0.55f, 1f, 0.95f, 1f),
+                cilia = true
             }, "NODO: Pulmones. La infección se asentó en los bronquiolos. Cada tramo está bloqueado: elimina al grupo y despeja el paso.",
                 new Vector2(30f, 4f), new Vector2(45f, 5f), new Vector2(76f, 5f));
 
