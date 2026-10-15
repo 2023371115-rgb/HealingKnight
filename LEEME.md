@@ -4,7 +4,7 @@
 
 **Entrega de diciembre:** Sistema Digestivo: Estómago → Intestino delgado (la lombriz aparece y huye) → Intestino grueso (pelea final con la lombriz). La **Boca** es un nivel secreto: se desbloquea al tocar un pasaje escondido en el Estómago.
 
-**Siguiente (prototipo listo):** Sistema Respiratorio: Nariz (rinovirus, polen, S. aureus) → Tráquea (tos ferina) → Pulmones (neumonía, influenza y el foco de tuberculosis; da la fórmula 2 y cierra con el aviso de que la infección va al cerebro). Mecánica del GDD: el paso por los bronquiolos está bloqueado por **mucosidad** (Mucolítico; te frena si la tocas) e **inflamación** (Antiinflamatorio; se contrae al dañarla). El **polen** es un alérgeno: Antihistamínico.
+**Siguiente (prototipo listo):** Sistema Respiratorio: Nariz (rinovirus, polen, S. aureus) → Tráquea (tos ferina) → Pulmones (neumonía, influenza y el jefe volador: la **colmena de tuberculosis**; da la fórmula 2 y cierra con el aviso de que la infección va al cerebro). Mecánica del GDD: el paso por los bronquiolos está bloqueado por **mucosidad** (Mucolítico; te frena si la tocas) e **inflamación** (Antiinflamatorio; se contrae al dañarla). El **polen** es un alérgeno: Antihistamínico.
 
 ---
 

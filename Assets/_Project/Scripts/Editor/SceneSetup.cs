@@ -141,9 +141,14 @@ namespace HealingKnight.EditorTools
             if (intensityProp != null && intensityProp.CanWrite) intensityProp.SetValue(light, 1f);
         }
 
+        private enum Decor { Blobs, Rings, Alveoli }
+
         private struct LevelStyle
         {
             public Color background, wall, floor, floorEdge, blob;
+            public Decor decor;
+            /// <summary>Si alfa > 0: cilios en el piso y luz al final del nivel (Sistema Respiratorio).</summary>
+            public Color glow;
         }
 
         private const float FloorY = 0f;   // la parte de arriba del piso
@@ -179,12 +184,59 @@ namespace HealingKnight.EditorTools
             FloorSegment($"Floor_{index}", segmentStart, endX + 15f);
 
             var random = new System.Random(length.GetHashCode());
-            for (float x = startX - 5f; x < endX + 10f; x += 4f + (float)random.NextDouble() * 3f)
+            switch (style.decor)
             {
-                float size = 1f + (float)random.NextDouble() * 2.5f;
-                float y = FloorY + 2.5f + (float)random.NextDouble() * 5f;
-                SetupUtils.SpriteChild(environment, "Blob", PlaceholderArt.Circle, style.blob,
-                    new Vector3(x, y, 0f), new Vector2(size, size * (0.7f + (float)random.NextDouble() * 0.6f)), -150);
+                case Decor.Rings: // anillos de cartílago de la tráquea
+                    for (float x = startX - 5f; x < endX + 10f; x += 3.2f)
+                    {
+                        SetupUtils.SpriteChild(environment, "Ring", PlaceholderArt.Square, style.blob,
+                            new Vector3(x, FloorY, 0f), new Vector2(0.9f, 10f), -150);
+                        SetupUtils.SpriteChild(environment, "RingEdge", PlaceholderArt.Square, new Color(style.glow.r, style.glow.g, style.glow.b, 0.25f),
+                            new Vector3(x + 0.45f, FloorY, 0f), new Vector2(0.12f, 10f), -149);
+                    }
+                    break;
+
+                case Decor.Alveoli: // racimos de alvéolos: burbujas translúcidas
+                    for (float x = startX - 5f; x < endX + 10f; x += 5f + (float)random.NextDouble() * 4f)
+                    {
+                        float cy = FloorY + 3f + (float)random.NextDouble() * 4.5f;
+                        int count = 4 + random.Next(4);
+                        for (int i = 0; i < count; i++)
+                        {
+                            float size = 0.8f + (float)random.NextDouble() * 1f;
+                            Vector3 p = new Vector3(x + (float)(random.NextDouble() - 0.5) * 2.2f, cy + (float)(random.NextDouble() - 0.5) * 2.2f, 0f);
+                            SetupUtils.SpriteChild(environment, "Alveolo", PlaceholderArt.Circle, style.blob, p, new Vector2(size, size), -150);
+                            SetupUtils.SpriteChild(environment, "Brillo", PlaceholderArt.Circle, new Color(1f, 1f, 1f, 0.25f),
+                                p + new Vector3(-size * 0.2f, size * 0.2f, 0f), new Vector2(size * 0.3f, size * 0.3f), -149);
+                        }
+                    }
+                    break;
+
+                default:
+                    for (float x = startX - 5f; x < endX + 10f; x += 4f + (float)random.NextDouble() * 3f)
+                    {
+                        float size = 1f + (float)random.NextDouble() * 2.5f;
+                        float y = FloorY + 2.5f + (float)random.NextDouble() * 5f;
+                        SetupUtils.SpriteChild(environment, "Blob", PlaceholderArt.Circle, style.blob,
+                            new Vector3(x, y, 0f), new Vector2(size, size * (0.7f + (float)random.NextDouble() * 0.6f)), -150);
+                    }
+                    break;
+            }
+
+            if (style.glow.a > 0f)
+            {
+                // Cilios a lo largo del piso y la luz del final del conducto (como el arte de referencia).
+                for (float x = startX - 10f; x < endX + 12f; x += 0.45f)
+                {
+                    float h = 0.25f + (float)random.NextDouble() * 0.25f;
+                    SetupUtils.SpriteChild(environment, "Cilio", PlaceholderArt.Square, new Color(style.glow.r, style.glow.g, style.glow.b, 0.55f),
+                        new Vector3(x, FloorY - 0.05f, 0f), new Vector2(0.08f, h), -95).transform.localRotation =
+                        Quaternion.Euler(0f, 0f, (float)(random.NextDouble() - 0.5) * 30f);
+                }
+                SetupUtils.SpriteChild(environment, "LuzSalida", PlaceholderArt.Circle, new Color(style.glow.r, style.glow.g, style.glow.b, 0.35f),
+                    new Vector3(endX + 2f, FloorY + 3.5f, 0f), new Vector2(3.5f, 7f), -140);
+                SetupUtils.SpriteChild(environment, "LuzSalidaCentro", PlaceholderArt.Circle, new Color(0.9f, 1f, 1f, 0.6f),
+                    new Vector3(endX + 2f, FloorY + 3.5f, 0f), new Vector2(1.6f, 5f), -139);
             }
 
             Vector2 spawn = new Vector2(startX + 3f, FloorY + 0.05f);
@@ -443,131 +495,191 @@ namespace HealingKnight.EditorTools
         }
 
         // ---------- Niveles del Sistema Respiratorio (GDD: avance por bronquiolos, mucosidad e inflamación) ----------
+        // Paleta del arte de referencia: tejido violeta oscuro, bordes cian que brillan, alvéolos lila translúcidos,
+        // mucosidad amarillo verdosa e inflamación roja.
+
+        private static readonly Color RespGlow = new Color(0.45f, 0.95f, 1f, 1f);
 
         private void BuildNariz()
         {
-            BuildLevelBase(85f, new LevelStyle
+            BuildLevelBase(90f, new LevelStyle
             {
-                background = new Color(0.22f, 0.07f, 0.1f),
-                wall = new Color(0.78f, 0.45f, 0.5f),
-                floor = new Color(0.92f, 0.62f, 0.64f),
-                floorEdge = new Color(1f, 0.85f, 0.85f),
-                blob = new Color(1f, 0.92f, 0.92f, 0.35f)
+                background = new Color(0.09f, 0.03f, 0.11f),
+                wall = new Color(0.36f, 0.14f, 0.34f),
+                floor = new Color(0.48f, 0.2f, 0.42f),
+                floorEdge = RespGlow,
+                blob = new Color(0.7f, 0.32f, 0.58f, 0.35f),
+                decor = Decor.Blobs,
+                glow = RespGlow
             }, "NODO: Sistema respiratorio. Entraste por la nariz. Tu cápsula regional ahora es el MUCOLÍTICO.",
-                new Vector2(33f, 2.5f));
+                new Vector2(26f, 3f), new Vector2(44f, 3f));
 
             Platform(1f, 2.2f, 3f);
 
-            // Primer contacto: virus del resfriado y polen.
+            // Arena 1: virus del resfriado y polen. Plataformas para pelear con los voladores.
             Arena("Arena_1_Resfriado", 8f, 18f,
                 "Rinovirus: virus del resfriado, flota y dispara. Antiviral. El polen es un alérgeno: Antihistamínico.",
                 W(0.8f, E(prefabs.Rinovirus, data.Rinovirus, 1), E(prefabs.Polen, data.Polen, 2)),
                 W(1.0f, E(prefabs.Rinovirus, data.Rinovirus, 2), E(prefabs.Polen, data.Polen, 2, SpawnSide.Left)));
-            Platform(12f, 2.4f, 3f);
-            Platform(19f, 2.4f, 3f);
+            Platform(10f, 2.4f, 2.6f);
+            Platform(15.5f, 3.8f, 2.6f);
+            Platform(21f, 2.4f, 2.6f);
 
-            // Tutorial de la mucosidad, sin enemigos: aprendes a disolverla con calma.
-            Platform(34.2f, 2.4f, 2.6f);
+            // Tramo de saltos: hueco con escalón flotante y escalera hacia arriba.
+            Platform(27.5f, 2.2f, 1.6f);
+            Platform(31f, 2.2f, 2.2f);
+            Platform(33.8f, 3.8f, 2.2f);
+            Platform(36.6f, 5.4f, 2.2f);
+            SetMessage("Mucosidad: tapa el paso y te frena si la tocas. Dispárale MUCOLÍTICO (el antihistamínico también sirve, pero menos).", 37f);
             Block(41f, true);
 
-            BlockedArena("Arena_2_Estafilococo", 48f, 22f,
+            // Hueco con burbuja en medio.
+            Platform(45.5f, 2.6f, 1.6f);
+
+            BlockedArena("Arena_2_Estafilococo", 52f, 22f,
                 "S. aureus: vive en la nariz y ataca en grupo. Antibiótico. Luego disuelve la mucosidad con Mucolítico.", true,
                 W(0.6f, E(prefabs.SAureus, data.SAureus, 3)),
                 W(1.0f, E(prefabs.SAureus, data.SAureus, 2, SpawnSide.Left), E(prefabs.Polen, data.Polen, 2), E(prefabs.Rinovirus, data.Rinovirus, 1)));
-            Platform(53f, 2.4f, 3f);
-            Platform(60f, 2.4f, 3f);
-
-            SetMessage("Mucosidad: tapa el paso y te frena si la tocas. Dispárale MUCOLÍTICO (el antihistamínico también sirve, pero menos).", 37f);
+            Platform(55f, 2.4f, 2.6f);
+            Platform(60f, 3.8f, 2.6f);
+            Platform(65f, 2.4f, 2.6f);
         }
 
         private void BuildTraquea()
         {
-            BuildLevelBase(95f, new LevelStyle
+            BuildLevelBase(100f, new LevelStyle
             {
-                background = new Color(0.16f, 0.08f, 0.12f),
-                wall = new Color(0.82f, 0.66f, 0.7f),
-                floor = new Color(0.95f, 0.85f, 0.85f),
-                floorEdge = new Color(1f, 1f, 1f),
-                blob = new Color(1f, 0.95f, 0.95f, 0.4f) // anillos de cartílago
+                background = new Color(0.06f, 0.04f, 0.13f),
+                wall = new Color(0.28f, 0.2f, 0.46f),
+                floor = new Color(0.4f, 0.28f, 0.58f),
+                floorEdge = RespGlow,
+                blob = new Color(0.6f, 0.52f, 0.85f, 0.3f), // anillos de cartílago
+                decor = Decor.Rings,
+                glow = RespGlow
             }, "NODO: Tráquea. Detectamos tos ferina: Bordetella pertussis. Antibiótico.",
-                new Vector2(36f, 3f));
+                new Vector2(31f, 4f), new Vector2(44.5f, 5f), new Vector2(76f, 3f));
 
             Arena("Arena_1_TosFerina", 8f, 18f, "B. pertussis: bacteria de la tos ferina. Empuja fuerte al chocar. Antibiótico.",
                 W(0.6f, E(prefabs.Pertussis, data.Pertussis, 2)),
                 W(1.0f, E(prefabs.Pertussis, data.Pertussis, 2, SpawnSide.Both), E(prefabs.Rinovirus, data.Rinovirus, 1)));
-            Platform(13f, 2.2f, 3f);
+            Platform(11f, 2.4f, 2.6f);
+            Platform(18f, 2.4f, 2.6f);
 
             // Inflamación: tutorial sin enemigos.
-            Block(29f, false);
             SetMessage("Inflamación: el tejido hinchado cierra el paso. Dispárale ANTIINFLAMATORIO hasta que se contraiga.", 24f);
+            Block(28f, false);
 
-            // Tramo de plataformas sobre un hueco (practica doble salto y caída lenta).
-            Platform(35f, 2.4f, 2.5f);
-            Platform(38.5f, 3.6f, 2.5f);
-            Platform(42f, 2.4f, 2.5f);
+            // Tramo de saltos sobre dos huecos: escalera de ida y vuelta por arriba.
+            Platform(33f, 2.6f, 1.8f);
+            Platform(37f, 2.4f, 2.4f);
+            Platform(40f, 4f, 2.4f);
+            Platform(43.5f, 5.6f, 2.4f);
+            Platform(47f, 4f, 2.4f);
+            Platform(50.5f, 2.4f, 2.2f);
 
-            BlockedArena("Arena_2_Bronquio", 50f, 22f,
+            BlockedArena("Arena_2_Bronquio", 56f, 22f,
                 "Influenza: virus que dispara más rápido. Antiviral. Al final, mucosidad: Mucolítico.", true,
                 W(0.6f, E(prefabs.Pertussis, data.Pertussis, 3)),
                 W(1.0f, E(prefabs.Influenza, data.Influenza, 1), E(prefabs.Pertussis, data.Pertussis, 2, SpawnSide.Left)),
                 W(1.0f, E(prefabs.Influenza, data.Influenza, 2), E(prefabs.Polen, data.Polen, 2, SpawnSide.Both)));
-            Platform(55f, 2.4f, 3f);
-            Platform(63f, 2.4f, 3f);
+            Platform(59f, 2.4f, 2.6f);
+            Platform(64f, 3.8f, 2.6f);
+            Platform(69f, 2.4f, 2.6f);
 
-            Block(80f, false);
+            Platform(77.5f, 2.4f, 1.8f);
+            Block(84f, false);
         }
 
         private void BuildPulmones()
         {
-            // Paleta azul y blanca, ambiente abierto y aéreo (GDD 7.2). 3 tramos, cada uno con un bloqueo.
-            LevelManager manager = BuildLevelBase(120f, new LevelStyle
+            // 3 tramos por bronquiolos, cada uno con un bloqueo; el último es la arena de la colmena.
+            LevelManager manager = BuildLevelBase(135f, new LevelStyle
             {
-                background = new Color(0.06f, 0.1f, 0.2f),
-                wall = new Color(0.45f, 0.62f, 0.85f),
-                floor = new Color(0.75f, 0.85f, 0.98f),
-                floorEdge = new Color(1f, 1f, 1f),
-                blob = new Color(0.85f, 0.93f, 1f, 0.35f) // alvéolos
+                background = new Color(0.05f, 0.05f, 0.15f),
+                wall = new Color(0.26f, 0.19f, 0.44f),
+                floor = new Color(0.36f, 0.25f, 0.54f),
+                floorEdge = RespGlow,
+                blob = new Color(0.85f, 0.7f, 0.95f, 0.28f), // alvéolos
+                decor = Decor.Alveoli,
+                glow = new Color(0.55f, 1f, 0.95f, 1f)
             }, "NODO: Pulmones. La infección se asentó en los bronquiolos. Cada tramo está bloqueado: elimina al grupo y despeja el paso.",
-                new Vector2(30f, 3f), new Vector2(37f, 3f), new Vector2(68f, 3f));
+                new Vector2(30f, 4f), new Vector2(45f, 5f), new Vector2(76f, 5f));
 
             // Tramo 1
             BlockedArena("Tramo_1_Neumonia", 8f, 20f,
                 "S. pneumoniae (neumonía): atacan en grupo. Antibiótico.", true,
                 W(0.6f, E(prefabs.Neumococo, data.Neumococo, 3)),
                 W(1.0f, E(prefabs.Neumococo, data.Neumococo, 2, SpawnSide.Left), E(prefabs.Influenza, data.Influenza, 1)));
-            Platform(13f, 2.4f, 3f);
+            Platform(10f, 2.4f, 2.6f);
+            Platform(15.5f, 3.8f, 2.6f);
+            Platform(20.5f, 2.4f, 2.6f);
 
-            // Alvéolos: plataformas sobre huecos.
-            Platform(31.5f, 2.6f, 2.4f);
-            Platform(34.5f, 4f, 2.2f);
-            Platform(38.5f, 2.6f, 2.4f);
-            Platform(41.5f, 4.2f, 2.2f);
+            // Bronquiolos: alvéolos flotando sobre huecos y una subida en tres niveles.
+            Alveolus(32f, 2.4f, 2f);
+            Alveolus(37f, 2.4f, 2.2f);
+            Alveolus(40f, 4.2f, 2.2f);
+            Alveolus(43f, 6f, 2.2f);
+            Alveolus(47.5f, 3.4f, 1.8f);
 
             // Tramo 2
-            BlockedArena("Tramo_2_Influenza", 46f, 20f,
+            BlockedArena("Tramo_2_Influenza", 54f, 20f,
                 "Influenza en el aire y neumococos en el piso. Al final, inflamación: Antiinflamatorio.", false,
                 W(0.6f, E(prefabs.Influenza, data.Influenza, 2)),
                 W(1.0f, E(prefabs.Neumococo, data.Neumococo, 3, SpawnSide.Both), E(prefabs.Influenza, data.Influenza, 1)));
-            Platform(52f, 2.4f, 3f);
-            Platform(58f, 3.4f, 3f);
+            Alveolus(56f, 2.4f, 2.4f);
+            Alveolus(61f, 3.8f, 2.4f);
+            Alveolus(66f, 2.4f, 2.4f);
 
-            Platform(69.5f, 2.6f, 2.4f);
+            // Hueco ancho: doble salto o caída lenta.
+            Alveolus(78.5f, 2.8f, 1.6f);
+            Platform(84f, 2.4f, 2.4f);
+            Platform(87f, 4.2f, 2.2f);
 
-            // Tramo 3: clímax (sin jefe). La mayor concentración de enemigos y un bloqueo doble.
-            BlockedArena("Tramo_3_FocoTuberculosis", 78f, 26f,
-                "NODO: ¡Foco de tuberculosis! M. tuberculosis es resistente: necesita muchas dosis de antibiótico.", true,
+            // Tramo 3: arena del jefe. Primero un grupo, luego la colmena voladora.
+            BlockedArena("Tramo_3_Colmena", 92f, 28f, "NODO: Algo enorme se mueve arriba...", true,
                 W(0.6f, E(prefabs.Neumococo, data.Neumococo, 4, SpawnSide.Both)),
-                W(1.0f, E(prefabs.Tuberculosis, data.Tuberculosis, 1), E(prefabs.Influenza, data.Influenza, 2)),
-                W(1.2f, E(prefabs.Tuberculosis, data.Tuberculosis, 2, SpawnSide.Both), E(prefabs.Neumococo, data.Neumococo, 3),
-                    E(prefabs.Influenza, data.Influenza, 2, SpawnSide.Left)));
-            Platform(84f, 2.4f, 3f);
-            Platform(92f, 3.4f, 3f);
-            Block(78f + 26f - 3f + 2.2f, false); // detrás de la mucosidad, la inflamación
+                W(1.5f, E(prefabs.Colmena, data.Colmena, 1)));
+            // Plataformas para subir a pegarle y para esquivar el bombardeo.
+            Alveolus(96f, 2.6f, 3f);
+            Platform(101.5f, 4.2f, 3.4f);
+            Alveolus(106f, 2.6f, 3f);
+            Platform(111f, 4.2f, 3f);
 
             // Cierre de la entrega de diciembre (GDD 8.6).
             SetupUtils.SetString(manager, "completeMessage",
                 "NODO: Fórmula 2 enviada a Aurelis. Alerta: la infección avanza hacia el cerebro...");
             SetupUtils.SetFloat(manager, "completeDelay", 4.5f);
+        }
+
+        /// <summary>Alvéolo: plataforma de un solo sentido que se ve como racimo de burbujas.</summary>
+        private void Alveolus(float centerX, float topY, float width)
+        {
+            const float thickness = 0.35f;
+            var go = new GameObject("Alveolo_Plataforma");
+            go.transform.SetParent(environment, false);
+            go.transform.position = new Vector3(centerX, topY, 0f);
+            go.layer = PhysicsLayers.Ground;
+
+            var box = go.AddComponent<BoxCollider2D>();
+            box.size = new Vector2(width, thickness);
+            box.offset = new Vector2(0f, -thickness * 0.5f);
+            box.usedByEffector = true;
+            var effector = go.AddComponent<PlatformEffector2D>();
+            effector.useOneWay = true;
+            effector.surfaceArc = 160f;
+
+            int count = Mathf.Max(2, Mathf.RoundToInt(width / 0.7f));
+            for (int i = 0; i < count; i++)
+            {
+                float x = -width * 0.5f + (i + 0.5f) * width / count;
+                float size = width / count * 1.35f;
+                SetupUtils.SpriteChild(go.transform, "Burbuja" + i, PlaceholderArt.Circle, new Color(0.9f, 0.75f, 0.95f, 0.75f),
+                    new Vector3(x, -size * 0.35f, 0f), new Vector2(size, size), -90);
+                SetupUtils.SpriteChild(go.transform, "Brillo" + i, PlaceholderArt.Circle, new Color(1f, 1f, 1f, 0.5f),
+                    new Vector3(x - size * 0.18f, -size * 0.18f, 0f), new Vector2(size * 0.25f, size * 0.25f), -89);
+            }
+            SetupUtils.SpriteChild(go.transform, "Borde", PlaceholderArt.Square, currentStyle.glow.a > 0f ? currentStyle.glow : currentStyle.floorEdge,
+                new Vector3(0f, -0.08f, 0f), new Vector2(width * 0.9f, 0.08f), -88);
         }
 
         /// <summary>Mensaje de NODO que aparece al pasar por una X (tutoriales sin arena).</summary>

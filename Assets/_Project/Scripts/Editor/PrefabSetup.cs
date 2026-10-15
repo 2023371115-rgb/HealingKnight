@@ -24,7 +24,7 @@ namespace HealingKnight.EditorTools
         public EnemyHealth HPylori, Giardia, Rotavirus, Entamoeba, CDifficile, Oxiuro, SMutans;
         public EnemyHealth LombrizDelgado, LombrizGrueso;
         public EnemyHealth Rinovirus, Polen, SAureus, Pertussis, Neumococo, Influenza, Tuberculosis;
-        public EnemyHealth Mucosidad, Inflamacion;
+        public EnemyHealth Mucosidad, Inflamacion, Colmena;
         public AcidPool Acid;
         public SecretPassage Secret;
 
@@ -69,6 +69,8 @@ namespace HealingKnight.EditorTools
             Tuberculosis = Enemy("Bacteria_Tuberculosis", data.Tuberculosis, EnemyShape.Capsule);
             Mucosidad = LoadOrBuild<EnemyHealth>($"{Folder}/Hazards/Bloqueo_Mucosidad.prefab", () => BuildObstacle("Bloqueo_Mucosidad", data.Mucosidad, true));
             Inflamacion = LoadOrBuild<EnemyHealth>($"{Folder}/Hazards/Bloqueo_Inflamacion.prefab", () => BuildObstacle("Bloqueo_Inflamacion", data.Inflamacion, false));
+
+            Colmena = LoadOrBuild<EnemyHealth>($"{Folder}/Bosses/Colmena_Pulmones.prefab", BuildHive);
 
             Secret = LoadOrBuild<SecretPassage>($"{Folder}/Level/SecretPassage.prefab", BuildSecret);
 
@@ -378,6 +380,60 @@ namespace HealingKnight.EditorTools
                 SetupUtils.SetRef(boss, "minionPrefab", minionPrefab);
                 SetupUtils.SetRef(boss, "minionData", minionData);
             }
+            return root;
+        }
+
+        // ---------- Jefe colmena (Pulmones) ----------
+
+        private GameObject BuildHive()
+        {
+            EnemyData d = data.Colmena;
+            var root = new GameObject("Colmena_Pulmones");
+            root.layer = PhysicsLayers.Enemy;
+            root.AddComponent<SortingGroup>().sortingOrder = 6;
+
+            GameObject visual = SetupUtils.Child(root.transform, "Visual", Vector3.zero);
+            Transform v = visual.transform;
+            var body = new System.Collections.Generic.List<Object>();
+
+            // Membranas laterales que "aletean" (lectura de nave).
+            body.Add(SetupUtils.SpriteChild(v, "WingL", PlaceholderArt.Circle, new Color(0.75f, 0.55f, 0.85f, 0.7f),
+                new Vector3(-1.9f, 0.3f, 0f), new Vector2(1.8f, 0.8f), -2));
+            body.Add(SetupUtils.SpriteChild(v, "WingR", PlaceholderArt.Circle, new Color(0.75f, 0.55f, 0.85f, 0.7f),
+                new Vector3(1.9f, 0.3f, 0f), new Vector2(1.8f, 0.8f), -2));
+
+            // Cuerpo: granuloma con forma de colmena.
+            body.Add(SetupUtils.SpriteChild(v, "Body", PlaceholderArt.Circle, d.tint, Vector3.zero, new Vector2(3.6f, 2.4f), 0));
+            body.Add(SetupUtils.SpriteChild(v, "Crown", PlaceholderArt.Circle, Color.Lerp(d.tint, Color.white, 0.2f),
+                new Vector3(0f, 0.9f, 0f), new Vector2(2.4f, 1.1f), 1));
+            body.Add(SetupUtils.SpriteChild(v, "Belly", PlaceholderArt.Circle, Color.Lerp(d.tint, Color.black, 0.2f),
+                new Vector3(0f, -0.8f, 0f), new Vector2(2.6f, 0.9f), 1));
+
+            // Celdas de la colmena: brillan antes de atacar.
+            var cells = new System.Collections.Generic.List<Object>();
+            Vector2[] cellPos =
+            {
+                new Vector2(-1.1f, 0.15f), new Vector2(-0.35f, 0.35f), new Vector2(0.4f, 0.3f), new Vector2(1.15f, 0.1f),
+                new Vector2(-0.75f, -0.4f), new Vector2(0f, -0.35f), new Vector2(0.75f, -0.45f)
+            };
+            for (int i = 0; i < cellPos.Length; i++)
+                cells.Add(SetupUtils.SpriteChild(v, "Cell" + i, PlaceholderArt.Circle, new Color(0.25f, 0.1f, 0.15f),
+                    new Vector3(cellPos[i].x, cellPos[i].y, 0f), new Vector2(0.45f, 0.42f), 2));
+
+            var health = root.AddComponent<EnemyHealth>();
+            SetupUtils.SetRef(health, "data", d);
+            SetupUtils.SetRef(health, "effectivenessTable", data.Table);
+            SetupUtils.SetRefArray(health, "flashRenderers", body.ToArray());
+
+            var hurtbox = root.AddComponent<Hurtbox>();
+            SetHurtbox(hurtbox, Vector2.zero, new Vector2(3.4f, 2.4f));
+
+            var boss = root.AddComponent<HiveBoss>();
+            SetupUtils.SetRef(boss, "visual", v);
+            SetupUtils.SetRefArray(boss, "cellRenderers", cells.ToArray());
+            SetupUtils.SetRef(boss, "projectilePrefab", EnemyProjectile);
+            SetupUtils.SetRef(boss, "minionPrefab", Neumococo);
+            SetupUtils.SetRef(boss, "minionData", data.Neumococo);
             return root;
         }
 

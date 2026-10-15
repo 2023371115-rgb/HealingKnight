@@ -17,7 +17,7 @@ namespace HealingKnight.EditorTools
         public PlayerConfig PlayerConfig;
         public EnemyData HPylori, Giardia, Rotavirus, Entamoeba, CDifficile, Oxiuro, SMutans, Lombriz;
         public EnemyData Rinovirus, Polen, SAureus, Pertussis, Neumococo, Influenza, Tuberculosis;
-        public EnemyData Mucosidad, Inflamacion;
+        public EnemyData Mucosidad, Inflamacion, Colmena;
         public GameCatalog Catalog;
         public LevelData DigestivoEstomago, DigestivoDelgado, DigestivoGrueso, DigestivoBoca;
         public LevelData RespiratorioNariz, RespiratorioTraquea, RespiratorioPulmones;
@@ -278,7 +278,7 @@ namespace HealingKnight.EditorTools
                 e.maxHealth = 60f;
                 e.meleeDamageTakenMultiplier = 0.25f;
                 e.knockbackResistance = 1f; e.hurtStunTime = 0f; e.linfocitoCharge = 0;
-                e.tint = new Color(0.8f, 0.95f, 0.7f, 0.92f);
+                e.tint = new Color(0.78f, 0.92f, 0.3f, 0.92f); // amarillo verdoso, como gotea en el arte de referencia
             });
 
             Inflamacion = Enemy("Bloqueo_Inflamacion", e =>
@@ -288,7 +288,19 @@ namespace HealingKnight.EditorTools
                 e.maxHealth = 80f;
                 e.meleeDamageTakenMultiplier = 0.25f;
                 e.knockbackResistance = 1f; e.hurtStunTime = 0f; e.linfocitoCharge = 0;
-                e.tint = new Color(0.95f, 0.4f, 0.45f);
+                e.tint = new Color(0.88f, 0.22f, 0.42f);
+            });
+
+            // Jefe de los Pulmones: colmena voladora de tuberculosis (estilo nave de Metal Slug).
+            Colmena = Enemy("Jefe_Colmena", e =>
+            {
+                e.displayName = "Colmena de tuberculosis";
+                e.threat = ThreatType.Bacteria;
+                e.movement = EnemyMovement.Flying; e.flyHeight = 4.5f;
+                e.maxHealth = 420f;
+                e.meleeDamageTakenMultiplier = 0.5f;
+                e.knockbackResistance = 1f; e.hurtStunTime = 0f; e.linfocitoCharge = 6;
+                e.tint = new Color(0.82f, 0.68f, 0.45f);
             });
         }
 
