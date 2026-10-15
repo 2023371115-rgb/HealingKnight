@@ -45,6 +45,7 @@ namespace HealingKnight.EditorTools
         public static string PulmonesPath => $"{Folder}/Levels/Respiratorio/Respiratorio_Pulmones.unity";
         public static string MedulaPath => $"{Folder}/Levels/Nervioso/Nervioso_Medula.unity";
         public static string CerebroPath => $"{Folder}/Levels/Nervioso/Nervioso_Cerebro.unity";
+        public static string HipocampoPath => $"{Folder}/Levels/Nervioso/Nervioso_Hipocampo.unity";
 
         public void Run()
         {
@@ -59,6 +60,7 @@ namespace HealingKnight.EditorTools
             CreateIfMissing(PulmonesPath, BuildPulmones);
             CreateIfMissing(MedulaPath, BuildMedula);
             CreateIfMissing(CerebroPath, BuildCerebro);
+            CreateIfMissing(HipocampoPath, BuildHipocampo);
             CreateIfMissing(SandboxPath, BuildSandbox);
 
             EditorBuildSettings.scenes = new[]
@@ -74,6 +76,7 @@ namespace HealingKnight.EditorTools
                 new EditorBuildSettingsScene(PulmonesPath, true),
                 new EditorBuildSettingsScene(MedulaPath, true),
                 new EditorBuildSettingsScene(CerebroPath, true),
+                new EditorBuildSettingsScene(HipocampoPath, true),
                 new EditorBuildSettingsScene(SandboxPath, true),
             };
         }
@@ -898,6 +901,68 @@ namespace HealingKnight.EditorTools
             neuron.transform.position = new Vector3(x, FloorY + y, 0f);
         }
 
+        /// <summary>Riel de axón (solo visual): por donde corre el jefe rabia.</summary>
+        private void AxonRail(float fromX, float toX, float height)
+        {
+            float w = toX - fromX;
+            SetupUtils.SpriteChild(environment, "Axon", PlaceholderArt.Capsule, new Color(0.35f, 0.6f, 1f, 0.35f),
+                new Vector3(fromX + w * 0.5f, FloorY + height, 0f), new Vector2(w, 0.3f), -141);
+            SetupUtils.SpriteChild(environment, "AxonBrillo", PlaceholderArt.Capsule, new Color(0.7f, 0.9f, 1f, 0.6f),
+                new Vector3(fromX + w * 0.5f, FloorY + height, 0f), new Vector2(w, 0.08f), -140);
+            for (float x = fromX + 1f; x < toX; x += 2.5f) // vainas de mielina
+                SetupUtils.SpriteChild(environment, "Mielina", PlaceholderArt.Capsule, new Color(0.55f, 0.45f, 0.9f, 0.45f),
+                    new Vector3(x, FloorY + height, 0f), new Vector2(1.6f, 0.5f), -139);
+        }
+
+        private void BuildHipocampo()
+        {
+            LevelManager manager = BuildLevelBase(80f, new LevelStyle
+            {
+                background = new Color(0.05f, 0.02f, 0.1f),
+                wall = new Color(0.22f, 0.07f, 0.3f),
+                floor = new Color(0.24f, 0.12f, 0.42f),
+                floorEdge = NerveGlow,
+                blob = new Color(0.45f, 0.3f, 0.8f, 0.3f),
+                decor = Decor.Neurons,
+                detail = new Color(0.35f, 0.65f, 1f, 0.7f),
+                glow = new Color(0.85f, 0.55f, 1f, 1f),
+                platformStems = true
+            }, "NODO: Hipocampo, el centro de la memoria. Algo viene corriendo por los nervios...",
+                new Vector2(20f, 3.5f));
+
+            new GameObject("SaludDelCerebro").AddComponent<BrainHealth>();
+
+            // Entrada: un grupo y una neurona roja para calentar.
+            Arena("Arena_Entrada", 4f, 14f, "Prepárate: Antiviral para la rabia, Anticonvulsivo para las neuronas.",
+                W(0.6f, E(prefabs.Rabia, data.Rabia, 2), E(prefabs.Poliovirus, data.Poliovirus, 1)));
+            Neuron(10f, 3.2f);
+            RedNeuron(15f, 1.5f);
+            Platform(8f, 2.4f, 2.4f);
+            Platform(21.75f, 2.4f, 1.6f);
+            Storm(24f, 30f);
+
+            // Arena del jefe: rieles de axones a dos alturas, neuronas sanas que puede infectar y plataformas.
+            const float arenaX = 34f, arenaW = 30f;
+            float left = arenaX - 3f, right = arenaX - 3f + arenaW;
+            AxonRail(left, right, 3.4f);
+            AxonRail(left, right, 6f);
+            Arena("Arena_Rabia", arenaX, arenaW, null,
+                W(1.2f, E(prefabs.RabiaJefe, data.RabiaJefe, 1)));
+            Neuron(left + 4f, 1.6f);
+            Neuron(left + 10f, 4.6f);
+            Neuron(left + 16f, 1.4f);
+            Neuron(left + 22f, 4.6f);
+            Neuron(left + 27f, 1.6f);
+            Platform(left + 7f, 2.4f, 2.6f);
+            Platform(left + 13f, 4.2f, 2.6f);
+            Platform(left + 19f, 2.4f, 2.6f);
+            Platform(left + 25f, 4.2f, 2.6f);
+
+            SetupUtils.SetString(manager, "completeMessage",
+                "NODO: Hipocampo a salvo. Fórmula 3 enviada a Aurelis. La infección huyó hacia el corazón...");
+            SetupUtils.SetFloat(manager, "completeDelay", 4.5f);
+        }
+
         private void RedNeuron(float x, float y)
         {
             var neuron = (GameObject)PrefabUtility.InstantiatePrefab(prefabs.RedNeuron.gameObject);
@@ -1031,7 +1096,7 @@ namespace HealingKnight.EditorTools
             Platform(110.5f, 4.4f, 2.4f);
 
             SetupUtils.SetString(manager, "completeMessage",
-                "NODO: Llegaste al hipocampo con el cerebro a salvo. Fórmula 3 enviada. La infección huyó hacia el corazón...");
+                "NODO: Cerebro despejado... pero algo corre por los nervios hacia el hipocampo.");
             SetupUtils.SetFloat(manager, "completeDelay", 4.5f);
         }
 

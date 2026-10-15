@@ -40,11 +40,27 @@ namespace HealingKnight.Gameplay.Hazards
         private float strikeX;
         private bool hitThisStrike;
 
+        /// <summary>false = solo cae cuando alguien lo pide (el jefe rabia controla sus rayos).</summary>
+        public bool AutoStrikes { get; set; } = true;
+        public bool IsBusy => state != State.Waiting;
+
         public void Configure(float from, float to, float floor)
         {
             minX = from;
             maxX = to;
             floorY = floor;
+        }
+
+        /// <summary>Hace caer un rayo (con su aviso de 1 s) en la X indicada. Devuelve false si ya hay uno en camino.</summary>
+        public bool ForceStrike(float x)
+        {
+            if (state != State.Waiting) return false;
+            strikeX = Mathf.Clamp(x, minX + width * 0.5f, maxX - width * 0.5f);
+            state = State.Warning;
+            timer = warningTime;
+            Place();
+            Show(true, false);
+            return true;
         }
 
         private void Start()
@@ -62,7 +78,7 @@ namespace HealingKnight.Gameplay.Hazards
             switch (state)
             {
                 case State.Waiting:
-                    if (timer <= 0f && playerInside)
+                    if (AutoStrikes && timer <= 0f && playerInside)
                     {
                         strikeX = Mathf.Clamp(player.Position.x + Random.Range(-aimJitter, aimJitter), minX + width * 0.5f, maxX - width * 0.5f);
                         state = State.Warning;

@@ -18,11 +18,11 @@ namespace HealingKnight.EditorTools
         public EnemyData HPylori, Giardia, Rotavirus, Entamoeba, CDifficile, Oxiuro, SMutans, Lombriz;
         public EnemyData Rinovirus, Polen, SAureus, Pertussis, Neumococo, Influenza, Tuberculosis;
         public EnemyData Mucosidad, Inflamacion, Colmena;
-        public EnemyData Poliovirus, Meningococo, Herpes, Rabia, NeuronaHiperexcitada;
+        public EnemyData Poliovirus, Meningococo, Herpes, Rabia, NeuronaHiperexcitada, RabiaJefe;
         public GameCatalog Catalog;
         public LevelData DigestivoEstomago, DigestivoDelgado, DigestivoGrueso, DigestivoBoca;
         public LevelData RespiratorioNariz, RespiratorioTraquea, RespiratorioPulmones;
-        public LevelData NerviosoMedula, NerviosoCerebro;
+        public LevelData NerviosoMedula, NerviosoCerebro, NerviosoHipocampo;
 
         public void Run()
         {
@@ -373,6 +373,17 @@ namespace HealingKnight.EditorTools
                 e.tint = new Color(1f, 0.25f, 0.3f);
             });
 
+            RabiaJefe = Enemy("Jefe_Rabia", e =>
+            {
+                e.displayName = "Virus de la rabia (jefe)";
+                e.threat = ThreatType.Virus;
+                e.movement = EnemyMovement.Flying; e.flyHeight = 3.4f;
+                e.maxHealth = 480f;
+                e.meleeDamageTakenMultiplier = 0.5f;
+                e.knockbackResistance = 1f; e.hurtStunTime = 0f; e.linfocitoCharge = 6;
+                e.tint = new Color(0.42f, 0.38f, 0.5f);
+            });
+
             Rabia = Enemy("Virus_Rabia", e =>
             {
                 e.displayName = "Virus de la rabia";
@@ -461,13 +472,26 @@ namespace HealingKnight.EditorTools
 
             NerviosoMedula = PlayableLevel("Nervioso", "01_Medula", "nervioso_medula", "Médula espinal", "Nervioso_Medula", false,
                 "Poliovirus y meningococo suben por la médula. Esquiva las tormentas eléctricas.");
-            NerviosoCerebro = PlayableLevel("Nervioso", "02_Cerebro", "nervioso_cerebro", "Cerebro", "Nervioso_Cerebro", true,
-                "Elimina la infección sin dañar las neuronas sanas. Llega al hipocampo con el cerebro a salvo. Fórmula 3.");
+            NerviosoCerebro = PlayableLevel("Nervioso", "02_Cerebro", "nervioso_cerebro", "Cerebro", "Nervioso_Cerebro", false,
+                "Elimina la infección sin dañar las neuronas sanas. Llega al hipocampo con el cerebro a salvo.");
+            if (NerviosoCerebro.grantsFormula)
+            {
+                // La fórmula 3 ahora la da el jefe del Hipocampo.
+                NerviosoCerebro.grantsFormula = false;
+                UnityEditor.EditorUtility.SetDirty(NerviosoCerebro);
+            }
+            NerviosoHipocampo = PlayableLevel("Nervioso", "03_Hipocampo", "nervioso_hipocampo", "Hipocampo", "Nervioso_Hipocampo", true,
+                "El virus de la rabia llegó al hipocampo. Derrótalo sin perder el cerebro. Fórmula 3.");
 
             SystemData nervioso = MakeSystem("Nervioso", "nervioso", "Sistema Nervioso", "III", Anticonvulsivo,
                 new Color(0.7f, 0.5f, 1f), new Vector2(0.5f, 0.9f),
                 "Tormentas eléctricas y tejido sano que hay que proteger.",
-                NerviosoMedula, NerviosoCerebro);
+                NerviosoMedula, NerviosoCerebro, NerviosoHipocampo);
+            if (!nervioso.levels.Contains(NerviosoHipocampo))
+            {
+                nervioso.levels.Add(NerviosoHipocampo);
+                UnityEditor.EditorUtility.SetDirty(nervioso);
+            }
             if (nervioso.regionalMedication == null)
             {
                 nervioso.regionalMedication = Anticonvulsivo;

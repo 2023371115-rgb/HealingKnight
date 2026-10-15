@@ -24,7 +24,7 @@ namespace HealingKnight.EditorTools
         public EnemyHealth HPylori, Giardia, Rotavirus, Entamoeba, CDifficile, Oxiuro, SMutans;
         public EnemyHealth LombrizDelgado, LombrizGrueso;
         public EnemyHealth Rinovirus, Polen, SAureus, Pertussis, Neumococo, Influenza, Tuberculosis;
-        public EnemyHealth Mucosidad, Inflamacion, Colmena;
+        public EnemyHealth Mucosidad, Inflamacion, Colmena, RabiaJefe;
         public EnemyHealth Poliovirus, Meningococo, Herpes, Rabia;
         public HealthyNeuron Neuron;
         public EnemyHealth RedNeuron;
@@ -84,6 +84,7 @@ namespace HealingKnight.EditorTools
             Storm = LoadOrBuild<LightningStorm>($"{Folder}/Hazards/Tormenta_Electrica.prefab", BuildStorm);
 
             Colmena = LoadOrBuild<EnemyHealth>($"{Folder}/Bosses/Colmena_Pulmones.prefab", BuildHive);
+            RabiaJefe = LoadOrBuild<EnemyHealth>($"{Folder}/Bosses/Rabia_Hipocampo.prefab", BuildRabiesBoss);
 
             Secret = LoadOrBuild<SecretPassage>($"{Folder}/Level/SecretPassage.prefab", BuildSecret);
 
@@ -492,6 +493,61 @@ namespace HealingKnight.EditorTools
             SetupUtils.SetRef(storm, "warningRenderer", warning);
             SetupUtils.SetRef(storm, "boltRenderer", bolt);
             SetupUtils.SetRef(storm, "groundGlow", glow);
+            return root;
+        }
+
+        // ---------- Jefe rabia (Hipocampo) ----------
+
+        private GameObject BuildRabiesBoss()
+        {
+            EnemyData d = data.RabiaJefe;
+            var root = new GameObject("Rabia_Hipocampo");
+            root.layer = PhysicsLayers.Enemy;
+            root.AddComponent<SortingGroup>().sortingOrder = 6;
+
+            // Forma de bala (como el virus real), con espículas de glicoproteína y líneas que brillan.
+            GameObject visual = SetupUtils.Child(root.transform, "Visual", Vector3.zero);
+            Transform v = visual.transform;
+            var body = new System.Collections.Generic.List<Object>();
+            body.Add(SetupUtils.SpriteChild(v, "Cuerpo", PlaceholderArt.Capsule, d.tint, Vector3.zero, new Vector2(3.4f, 1.4f), 0));
+            body.Add(SetupUtils.SpriteChild(v, "Punta", PlaceholderArt.Circle, Color.Lerp(d.tint, Color.white, 0.15f),
+                new Vector3(1.25f, 0f, 0f), new Vector2(1.3f, 1.4f), 1));
+            body.Add(SetupUtils.SpriteChild(v, "Base", PlaceholderArt.SquareCentered, Color.Lerp(d.tint, Color.black, 0.25f),
+                new Vector3(-1.55f, 0f, 0f), new Vector2(0.35f, 1.3f), 1));
+            for (int i = 0; i < 9; i++)
+            {
+                float x = -1.4f + i * 0.33f;
+                body.Add(SetupUtils.SpriteChild(v, "EspiculaArriba" + i, PlaceholderArt.Capsule, Color.Lerp(d.tint, Color.black, 0.3f),
+                    new Vector3(x, 0.82f, 0f), new Vector2(0.38f, 0.13f), -1));
+                body.Add(SetupUtils.SpriteChild(v, "EspiculaAbajo" + i, PlaceholderArt.Capsule, Color.Lerp(d.tint, Color.black, 0.3f),
+                    new Vector3(x, -0.82f, 0f), new Vector2(0.38f, 0.13f), -1));
+            }
+            foreach (Transform t in v)
+                if (t.name.StartsWith("Espicula")) t.localRotation = Quaternion.Euler(0f, 0f, 90f);
+
+            var glows = new System.Collections.Generic.List<Object>
+            {
+                SetupUtils.SpriteChild(v, "Ojo", PlaceholderArt.Circle, new Color(0.9f, 0.2f, 0.45f), new Vector3(1.35f, 0.15f, 0f), new Vector2(0.38f, 0.3f), 3),
+                SetupUtils.SpriteChild(v, "Linea1", PlaceholderArt.Capsule, new Color(0.9f, 0.2f, 0.45f), new Vector3(-0.2f, 0.3f, 0f), new Vector2(2.2f, 0.09f), 2),
+                SetupUtils.SpriteChild(v, "Linea2", PlaceholderArt.Capsule, new Color(0.9f, 0.2f, 0.45f), new Vector3(-0.2f, -0.3f, 0f), new Vector2(2.2f, 0.09f), 2)
+            };
+
+            var health = root.AddComponent<EnemyHealth>();
+            SetupUtils.SetRef(health, "data", d);
+            SetupUtils.SetRef(health, "effectivenessTable", data.Table);
+            SetupUtils.SetRefArray(health, "flashRenderers", body.ToArray());
+
+            var hurtbox = root.AddComponent<Hurtbox>();
+            SetHurtbox(hurtbox, Vector2.zero, new Vector2(3.6f, 1.6f));
+
+            var boss = root.AddComponent<RabiesBoss>();
+            SetupUtils.SetRef(boss, "visual", v);
+            SetupUtils.SetRefArray(boss, "glowRenderers", glows.ToArray());
+            SetupUtils.SetRef(boss, "projectilePrefab", EnemyProjectile);
+            SetupUtils.SetRef(boss, "stormPrefab", Storm);
+            SetupUtils.SetRef(boss, "redNeuronPrefab", RedNeuron);
+            SetupUtils.SetRef(boss, "minionPrefab", Rabia);
+            SetupUtils.SetRef(boss, "minionData", data.Rabia);
             return root;
         }
 
