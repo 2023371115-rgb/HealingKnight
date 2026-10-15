@@ -748,7 +748,7 @@ namespace HealingKnight.EditorTools
                 glow = new Color(0.55f, 1f, 0.95f, 1f),
                 cilia = true
             }, "NODO: Pulmones. La infección se asentó en los bronquiolos. Cada tramo está bloqueado: elimina al grupo y despeja el paso.",
-                new Vector2(30f, 4f), new Vector2(45f, 5f), new Vector2(76f, 5f));
+                new Vector2(30f, 4f), new Vector2(45f, 4.5f), new Vector2(76f, 4.5f));
 
             // Tramo 1
             BlockedArena("Tramo_1_Neumonia", 8f, 20f,
@@ -760,12 +760,14 @@ namespace HealingKnight.EditorTools
             Platform(20.5f, 2.4f, 2.6f);
 
             // Bronquiolos: los alvéolos RESPIRAN (rosados): se inflan, tiemblan y se desinflan. Salta cuando estén llenos.
-            SetMessage("NODO: Los alvéolos rosados respiran. Pisa cuando estén inflados; si tiemblan, se van a desinflar.", 27f);
-            Alveolus(32f, 2.4f, 2f, 0f);
-            Alveolus(37f, 2.4f, 2.2f);
-            Alveolus(40f, 4.2f, 2.2f, 0.15f);
-            Alveolus(43f, 6f, 2.2f, 0.55f);
-            Alveolus(47.5f, 3.4f, 1.8f, 0.3f);
+            // Reglas: huecos de máx. 4.5 u, repisa destino a máx. 3.5 u arriba del alvéolo, 5.5 u libres arriba.
+            SetMessage("NODO: Los alvéolos respiran. Si caes en uno INFLADO te impulsa muy alto; desinflado es una plataforma normal.", 27f);
+            Alveolus(32f, 1.2f, 2f, 0f);          // sobre el hueco 1 (4 u)
+            Platform(35.8f, 4.4f, 2.4f);           // repisa: 3.2 u arriba del alvéolo
+            Alveolus(39.5f, 1.2f, 2f, 1f);         // desfasado 1 s
+            Platform(43f, 4.6f, 2.4f);             // repisa: 3.4 u arriba
+            Alveolus(47.2f, 1.2f, 1.8f, 2f);       // sobre el hueco 2 (4.5 u), desfasado 2 s
+            Platform(51.2f, 4.2f, 2f);
 
             // Tramo 2
             BlockedArena("Tramo_2_Influenza", 54f, 20f,
@@ -776,9 +778,10 @@ namespace HealingKnight.EditorTools
             Alveolus(61f, 3.8f, 2.4f);
             Alveolus(66f, 2.4f, 2.4f);
 
-            // Hueco ancho: dos alvéolos que respiran alternados (cuando uno se llena, el otro se vacía).
-            Alveolus(77.5f, 2.6f, 1.6f, 0f);
-            Alveolus(80f, 3.4f, 1.6f, 0.5f);
+            // Secuencia de timing sobre el hueco 3 (4.5 u): dos alvéolos desfasados 2 s
+            // (cuando uno está inflado el otro está desinflado).
+            Alveolus(77.2f, 1.2f, 1.6f, 0f);
+            Alveolus(79.6f, 1.2f, 1.6f, 2f);
             Platform(84f, 2.4f, 2.4f);
             Platform(87f, 4.2f, 2.2f);
 
@@ -789,7 +792,7 @@ namespace HealingKnight.EditorTools
             // Plataformas para subir a pegarle y para esquivar el bombardeo.
             Alveolus(96f, 2.6f, 3f);
             Platform(101.5f, 4.2f, 3.4f);
-            Alveolus(106f, 2.6f, 3f, 0.25f); // respira: refugio que no siempre está
+            Alveolus(106f, 1.2f, 3f, 1f); // inflado te lanza a la altura de la colmena (cuidado con chocarla)
             Platform(111f, 4.2f, 3f);
 
             // Cierre de la entrega de diciembre (GDD 8.6).
@@ -800,12 +803,13 @@ namespace HealingKnight.EditorTools
 
         /// <summary>Alvéolo: plataforma de un solo sentido que se ve como racimo de burbujas.</summary>
         /// <summary>
-        /// Alvéolo. Con 'breathPhase' entre 0 y 1 respira (se infla y desinfla, BreathingPlatform);
-        /// con un valor negativo es fijo.
+        /// Alvéolo. Con 'breathOffset' entre 0 y 2 s respira (BreathingPlatform: ciclo de 4 s, rebota a 4 u
+        /// cuando está inflado); con un valor negativo es fijo. Reglas: 5.5 u libres arriba, repisa destino
+        /// a máximo 3.5 u del alvéolo y huecos de máximo 4.5 u.
         /// </summary>
-        private void Alveolus(float centerX, float topY, float width, float breathPhase = -1f)
+        private void Alveolus(float centerX, float topY, float width, float breathOffset = -1f)
         {
-            bool breathing = breathPhase >= 0f;
+            bool breathing = breathOffset >= 0f;
             const float thickness = 0.35f;
             var go = new GameObject("Alveolo_Plataforma");
             go.transform.SetParent(environment, false);
@@ -840,7 +844,7 @@ namespace HealingKnight.EditorTools
             {
                 var breath = go.AddComponent<BreathingPlatform>();
                 SetupUtils.SetRef(breath, "visual", visual);
-                SetupUtils.SetFloat(breath, "phaseOffset", Mathf.Repeat(breathPhase, 1f));
+                SetupUtils.SetFloat(breath, "phaseOffset", Mathf.Clamp(breathOffset, 0f, 2f));
             }
         }
 

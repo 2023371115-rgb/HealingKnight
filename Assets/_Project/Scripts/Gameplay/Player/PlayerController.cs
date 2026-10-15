@@ -36,6 +36,8 @@ namespace HealingKnight.Gameplay.Player
         private float slowFallLeft;
         private bool slowFalling;
         private bool locked;
+        private bool bounceAirborne;
+        private float bounceTime;
         private float slowMultiplier = 1f;
         private float slowUntil;
         private Vector2 aim = Vector2.right;
@@ -48,6 +50,9 @@ namespace HealingKnight.Gameplay.Player
 
         /// <summary>Al saltar. true = salto en el aire (para animación, sonido o partículas).</summary>
         public event Action<bool> Jumped;
+
+        /// <summary>Al rebotar en un alvéolo inflado.</summary>
+        public event Action Bounced;
 
         public PlayerConfig Config => config;
         public CharacterMotor2D Motor => motor;
@@ -150,9 +155,12 @@ namespace HealingKnight.Gameplay.Player
             float vx = motor.IsGrounded ? target : Mathf.Lerp(motor.Velocity.x, target, config.airControl);
             motor.SetHorizontalVelocity(vx);
 
+            // Rebote de alvéolo: mientras dura el vuelo no hay salto (ni normal ni en el aire).
+            if (bounceAirborne && motor.IsGrounded && Time.time > bounceTime + 0.15f) bounceAirborne = false;
+
             // Salto de altura fija + doble salto en el aire.
-            if (motor.IsGrounded) airJumpsUsed = 0;
-            if (input.JumpPressed && !shielding)
+            if (motor.IsGrounded && !bounceAirborne) airJumpsUsed = 0;
+            if (input.JumpPressed && !shielding && !bounceAirborne)
             {
                 if (motor.IsGrounded)
                 {
@@ -256,6 +264,20 @@ namespace HealingKnight.Gameplay.Player
             info.blockable = false;
             health?.ApplyDamage(info);
             if (state != State.Dead) motor.Teleport(lastSafePosition + Vector2.up * 0.5f);
+        }
+
+        /// <summary>
+        /// Rebote de alvéolo inflado: altura fija (siempre la misma, no depende de la caída ni del botón).
+        /// No cuenta como salto: no lo gasta ni lo recarga, y durante el vuelo no se puede saltar.
+        /// </summary>
+        public void Bounce(float height, float velocity)
+        {
+            if (state == State.Dead) return;
+            SetCrouch(false);
+            motor.Jump(height, 2f * height / velocity);
+            bounceAirborne = true;
+            bounceTime = Time.time;
+            Bounced?.Invoke();
         }
 
         /// <summary>Frena al jugador un momento (mucosidad: 0.5 = mitad de velocidad).</summary>

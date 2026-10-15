@@ -1,83 +1,126 @@
+using HealingKnight.Gameplay.Player;
 using UnityEngine;
 
 namespace HealingKnight.Gameplay.Level
 {
     /// <summary>
-    /// Alvéolo que respira (Pulmones): se infla, se mantiene lleno, tiembla como aviso y se desinfla.
-    /// Lleno es una plataforma normal; desinflado no se puede pisar (si estás encima, caes).
-    /// Con 'phaseOffset' distinto entre alvéolos vecinos se alternan y hay que medir el salto.
+    /// Alvéolo que respira (Pulmones). Ciclo de 4 s = 15 respiraciones por minuto (normal en reposo):
+    ///   se infla en 0.5 s → inflado 1.5 s → se desinfla en 0.5 s → desinflado 1.5 s.
+    /// Los cambios de 0.5 s son el aviso para el jugador. Alvéolos del mismo grupo se desfasan hasta 2 s.
+    ///
+    /// - Inflado: si el jugador CAE encima, sale impulsado siempre a 4.0 u (velocidad vertical fija de 15.8 u/s),
+    ///   sin importar desde dónde cayó ni si presiona saltar. El rebote no cuenta como salto: no lo gasta,
+    ///   no lo recarga y en el aire sigue sin poder saltar.
+    /// - Desinflado: plataforma baja normal, sin rebote; desde ahí se puede saltar.
+    /// - Si el jugador solo está parado encima cuando se infla, no lo lanza (sube con él).
+    ///
+    /// Reglas para diseñar el nivel: dejar 5.5 u libres hacia el techo encima de cada alvéolo,
+    /// la repisa de destino a máximo 3.5 u arriba del alvéolo y huecos de máximo 4.5 u.
     /// Estructura: raíz con BoxCollider2D (+ PlatformEffector2D) y este script; hijo "Visual" con las burbujas.
     /// </summary>
     [RequireComponent(typeof(BoxCollider2D))]
     public class BreathingPlatform : MonoBehaviour
     {
+        public const float CycleSeconds = 4f;
+        public const float BounceHeight = 4f;
+        public const float BounceVelocity = 15.8f;
+
         [SerializeField] private Transform visual;
 
-        [Header("Ritmo (segundos)")]
-        [SerializeField] private float inflateTime = 0.6f;
-        [SerializeField] private float fullTime = 2.2f;
-        [SerializeField] private float warningTime = 0.7f;
-        [SerializeField] private float deflateTime = 0.35f;
-        [SerializeField] private float emptyTime = 1.4f;
-        [Tooltip("0..1: en qué parte del ciclo empieza (para alternar con los vecinos).")]
-        [SerializeField, Range(0f, 1f)] private float phaseOffset;
+        [Header("Ritmo (segundos, ciclo total 4 s)")]
+        [SerializeField] private float inflateTime = 0.5f;
+        [SerializeField] private float inflatedTime = 1.5f;
+        [SerializeField] private float deflateTime = 0.5f;
+        [SerializeField] private float deflatedTime = 1.5f;
+        [Tooltip("Desfase dentro del grupo (0 a 2 s) para armar secuencias de timing.")]
+        [SerializeField, Range(0f, 2f)] private float phaseOffset;
 
         [Header("Forma")]
-        [SerializeField, Range(0.05f, 1f)] private float emptyScale = 0.25f;
-        [Tooltip("Cuánto sube al inflarse (se siente como respiración).")]
-        [SerializeField] private float rise = 0.25f;
-        [Tooltip("Por debajo de este tamaño ya no se puede pisar.")]
-        [SerializeField, Range(0.1f, 1f)] private float solidAbove = 0.7f;
+        [Tooltip("Cuánto sube la superficie al inflarse.")]
+        [SerializeField] private float inflatedRise = 0.6f;
+        [SerializeField, Range(0.2f, 1f)] private float deflatedScale = 0.55f;
 
         private BoxCollider2D box;
-        private Vector2 fullSize;
-        private Vector3 visualBaseScale = Vector3.one;
         private Vector3 basePosition;
+        private Vector3 visualBaseScale = Vector3.one;
         private float time;
 
-        public bool IsSolid => box != null && box.enabled;
-        private float Period => inflateTime + fullTime + warningTime + deflateTime + emptyTime;
+        private bool playerWasOnTop;
+        private float playerPreviousVelocityY;
+
+        public bool IsInflated { get; private set; }
+        private float Period => inflateTime + inflatedTime + deflateTime + deflatedTime;
+        private float TopY => transform.position.y; // la superficie está en el origen del objeto
 
         private void Awake()
         {
             box = GetComponent<BoxCollider2D>();
-            fullSize = box.size;
             basePosition = transform.position;
             if (visual != null) visualBaseScale = visual.localScale;
-            time = phaseOffset * Period;
+            time = phaseOffset;
         }
 
         private void Update()
         {
             time = (time + Time.deltaTime) % Period;
+            float k = InflationAt(time, out bool inflated);
+            IsInflated = inflated;
 
-            float t = time;
-            float scale;
-            float shake = 0f;
-            if (t < inflateTime) scale = Mathf.Lerp(emptyScale, 1f, Smooth(t / inflateTime));
-            else if ((t -= inflateTime) < fullTime) scale = 1f + Mathf.Sin(t * 3f) * 0.02f;
-            else if ((t -= fullTime) < warningTime)
-            {
-                scale = 1f;
-                shake = Mathf.Sin(t * 45f) * 0.06f; // tiembla: "me voy a desinflar"
-            }
-            else if ((t -= warningTime) < deflateTime) scale = Mathf.Lerp(1f, emptyScale, Smooth(t / deflateTime));
-            else scale = emptyScale;
-
+            transform.position = basePosition + new Vector3(0f, inflatedRise * k, 0f);
             if (visual != null)
             {
-                visual.localScale = new Vector3(visualBaseScale.x * scale, visualBaseScale.y * Mathf.Lerp(0.6f, 1f, scale), visualBaseScale.z);
-                visual.localPosition = new Vector3(shake, 0f, 0f);
+                float s = Mathf.Lerp(deflatedScale, 1f, k);
+                visual.localScale = new Vector3(visualBaseScale.x * Mathf.Lerp(0.85f, 1f, k), visualBaseScale.y * s, visualBaseScale.z);
             }
 
-            float k = Mathf.InverseLerp(emptyScale, 1f, scale);
-            transform.position = basePosition + new Vector3(0f, rise * k, 0f);
+            CheckBounce();
+        }
 
-            bool solid = scale >= solidAbove;
-            if (box.enabled != solid) box.enabled = solid;
-            box.size = new Vector2(fullSize.x * Mathf.Max(scale, 0.1f), fullSize.y);
+        /// <summary>0 = desinflado, 1 = inflado. 'inflated' solo es true en la fase de 1.5 s completamente inflado.</summary>
+        private float InflationAt(float t, out bool inflated)
+        {
+            inflated = false;
+            if (t < inflateTime) return Smooth(t / inflateTime);
+            t -= inflateTime;
+            if (t < inflatedTime) { inflated = true; return 1f; }
+            t -= inflatedTime;
+            if (t < deflateTime) return 1f - Smooth(t / deflateTime);
+            return 0f;
+        }
+
+        private void CheckBounce()
+        {
+            PlayerController player = PlayerController.Current;
+            if (player == null || player.Motor == null) return;
+
+            Vector2 feet = player.Position;
+            float halfWidth = box.size.x * 0.5f + 0.3f;
+            bool onTop = Mathf.Abs(feet.x - transform.position.x) <= halfWidth
+                         && feet.y >= TopY - 0.25f && feet.y <= TopY + 0.15f
+                         && player.Motor.Velocity.y <= 0.1f;
+
+            // Solo rebota si CAYÓ encima (venía bajando) y el alvéolo está inflado.
+            // Si ya estaba parado encima cuando se infló, no lo lanza.
+            if (onTop && !playerWasOnTop && IsInflated && playerPreviousVelocityY < -1f)
+            {
+                player.Bounce(BounceHeight, BounceVelocity);
+                onTop = false;
+            }
+
+            playerWasOnTop = onTop;
+            playerPreviousVelocityY = player.Motor.Velocity.y;
         }
 
         private static float Smooth(float x) => x * x * (3f - 2f * x);
+
+        private void OnDrawGizmosSelected()
+        {
+            // Espacio libre que debe tener hacia el techo y alcance de la repisa de destino.
+            Vector3 top = Application.isPlaying ? basePosition : transform.position;
+            Gizmos.color = new Color(1f, 0.5f, 0.8f, 0.6f);
+            Gizmos.DrawLine(top, top + Vector3.up * 5.5f);
+            Gizmos.color = new Color(0.5f, 1f, 0.6f, 0.6f);
+            Gizmos.DrawLine(top + new Vector3(-1f, 3.5f, 0f), top + new Vector3(1f, 3.5f, 0f));
+        }
     }
 }
