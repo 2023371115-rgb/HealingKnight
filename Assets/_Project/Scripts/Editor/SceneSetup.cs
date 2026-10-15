@@ -759,12 +759,13 @@ namespace HealingKnight.EditorTools
             Platform(15.5f, 3.8f, 2.6f);
             Platform(20.5f, 2.4f, 2.6f);
 
-            // Bronquiolos: alvéolos flotando sobre huecos y una subida en tres niveles.
-            Alveolus(32f, 2.4f, 2f);
+            // Bronquiolos: los alvéolos RESPIRAN (rosados): se inflan, tiemblan y se desinflan. Salta cuando estén llenos.
+            SetMessage("NODO: Los alvéolos rosados respiran. Pisa cuando estén inflados; si tiemblan, se van a desinflar.", 27f);
+            Alveolus(32f, 2.4f, 2f, 0f);
             Alveolus(37f, 2.4f, 2.2f);
-            Alveolus(40f, 4.2f, 2.2f);
-            Alveolus(43f, 6f, 2.2f);
-            Alveolus(47.5f, 3.4f, 1.8f);
+            Alveolus(40f, 4.2f, 2.2f, 0.15f);
+            Alveolus(43f, 6f, 2.2f, 0.55f);
+            Alveolus(47.5f, 3.4f, 1.8f, 0.3f);
 
             // Tramo 2
             BlockedArena("Tramo_2_Influenza", 54f, 20f,
@@ -775,8 +776,9 @@ namespace HealingKnight.EditorTools
             Alveolus(61f, 3.8f, 2.4f);
             Alveolus(66f, 2.4f, 2.4f);
 
-            // Hueco ancho: doble salto o caída lenta.
-            Alveolus(78.5f, 2.8f, 1.6f);
+            // Hueco ancho: dos alvéolos que respiran alternados (cuando uno se llena, el otro se vacía).
+            Alveolus(77.5f, 2.6f, 1.6f, 0f);
+            Alveolus(80f, 3.4f, 1.6f, 0.5f);
             Platform(84f, 2.4f, 2.4f);
             Platform(87f, 4.2f, 2.2f);
 
@@ -787,7 +789,7 @@ namespace HealingKnight.EditorTools
             // Plataformas para subir a pegarle y para esquivar el bombardeo.
             Alveolus(96f, 2.6f, 3f);
             Platform(101.5f, 4.2f, 3.4f);
-            Alveolus(106f, 2.6f, 3f);
+            Alveolus(106f, 2.6f, 3f, 0.25f); // respira: refugio que no siempre está
             Platform(111f, 4.2f, 3f);
 
             // Cierre de la entrega de diciembre (GDD 8.6).
@@ -797,8 +799,13 @@ namespace HealingKnight.EditorTools
         }
 
         /// <summary>Alvéolo: plataforma de un solo sentido que se ve como racimo de burbujas.</summary>
-        private void Alveolus(float centerX, float topY, float width)
+        /// <summary>
+        /// Alvéolo. Con 'breathPhase' entre 0 y 1 respira (se infla y desinfla, BreathingPlatform);
+        /// con un valor negativo es fijo.
+        /// </summary>
+        private void Alveolus(float centerX, float topY, float width, float breathPhase = -1f)
         {
+            bool breathing = breathPhase >= 0f;
             const float thickness = 0.35f;
             var go = new GameObject("Alveolo_Plataforma");
             go.transform.SetParent(environment, false);
@@ -813,18 +820,28 @@ namespace HealingKnight.EditorTools
             effector.useOneWay = true;
             effector.surfaceArc = 160f;
 
+            Transform visual = SetupUtils.Child(go.transform, "Visual", Vector3.zero).transform;
+            // Los que respiran son más rosados, para distinguirlos de los fijos.
+            Color bubble = breathing ? new Color(1f, 0.62f, 0.85f, 0.8f) : new Color(0.9f, 0.75f, 0.95f, 0.75f);
             int count = Mathf.Max(2, Mathf.RoundToInt(width / 0.7f));
             for (int i = 0; i < count; i++)
             {
                 float x = -width * 0.5f + (i + 0.5f) * width / count;
                 float size = width / count * 1.35f;
-                SetupUtils.SpriteChild(go.transform, "Burbuja" + i, PlaceholderArt.Circle, new Color(0.9f, 0.75f, 0.95f, 0.75f),
+                SetupUtils.SpriteChild(visual, "Burbuja" + i, PlaceholderArt.Circle, bubble,
                     new Vector3(x, -size * 0.35f, 0f), new Vector2(size, size), -90);
-                SetupUtils.SpriteChild(go.transform, "Brillo" + i, PlaceholderArt.Circle, new Color(1f, 1f, 1f, 0.5f),
+                SetupUtils.SpriteChild(visual, "Brillo" + i, PlaceholderArt.Circle, new Color(1f, 1f, 1f, 0.5f),
                     new Vector3(x - size * 0.18f, -size * 0.18f, 0f), new Vector2(size * 0.25f, size * 0.25f), -89);
             }
-            SetupUtils.SpriteChild(go.transform, "Borde", PlaceholderArt.Square, currentStyle.glow.a > 0f ? currentStyle.glow : currentStyle.floorEdge,
+            SetupUtils.SpriteChild(visual, "Borde", PlaceholderArt.Square, currentStyle.glow.a > 0f ? currentStyle.glow : currentStyle.floorEdge,
                 new Vector3(0f, -0.08f, 0f), new Vector2(width * 0.9f, 0.08f), -88);
+
+            if (breathing)
+            {
+                var breath = go.AddComponent<BreathingPlatform>();
+                SetupUtils.SetRef(breath, "visual", visual);
+                SetupUtils.SetFloat(breath, "phaseOffset", Mathf.Repeat(breathPhase, 1f));
+            }
         }
 
         /// <summary>Mensaje de NODO que aparece al pasar por una X (tutoriales sin arena).</summary>
