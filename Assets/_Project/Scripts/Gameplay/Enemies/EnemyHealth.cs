@@ -117,6 +117,21 @@ namespace HealingKnight.Gameplay.Enemies
         /// Sale del combate sin morir (un jefe que huye). Cuenta como "ya no está vivo" para las arenas,
         /// pero no dispara AnyDied ni la animación de muerte. El que llama se encarga de destruirlo.
         /// </summary>
+        /// <summary>Para jefes compuestos (el ciempiés de rabia): la barra refleja la vida de todas sus partes.</summary>
+        public void SetHealth01(float value01)
+        {
+            if (data == null || dead) return;
+            current = Mathf.Clamp01(value01) * data.maxHealth;
+        }
+
+        /// <summary>Muerte forzada (cuando el jefe compuesto ya no tiene partes).</summary>
+        public void Kill()
+        {
+            if (dead) return;
+            current = 0f;
+            Die();
+        }
+
         public void Retreat()
         {
             dead = true;

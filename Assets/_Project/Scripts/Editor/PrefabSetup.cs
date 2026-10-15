@@ -81,6 +81,12 @@ namespace HealingKnight.EditorTools
             Rabia = Enemy("Virus_Rabia", data.Rabia, EnemyShape.Bullet);
             Neuron = LoadOrBuild<HealthyNeuron>($"{Folder}/Level/Neurona_Sana.prefab", BuildNeuron);
             RedNeuron = LoadOrBuild<EnemyHealth>($"{Folder}/Level/Neurona_Hiperexcitada.prefab", BuildRedNeuron);
+            if (Neuron != null && RedNeuron != null)
+            {
+                // La neurona sana se infecta y se vuelve roja (referencia cruzada entre los dos prefabs).
+                SetupUtils.SetRef(Neuron, "infectedPrefab", RedNeuron);
+                EditorUtility.SetDirty(Neuron.gameObject);
+            }
             Storm = LoadOrBuild<LightningStorm>($"{Folder}/Hazards/Tormenta_Electrica.prefab", BuildStorm);
 
             Colmena = LoadOrBuild<EnemyHealth>($"{Folder}/Bosses/Colmena_Pulmones.prefab", BuildHive);
@@ -500,37 +506,57 @@ namespace HealingKnight.EditorTools
 
         private GameObject BuildRabiesBoss()
         {
-            EnemyData d = data.RabiaJefe;
+            RabiesSegment virion = LoadOrBuild<RabiesSegment>($"{Folder}/Bosses/Rabia_Virion.prefab", BuildRabiesVirion);
+
+            // La raíz no se ve ni recibe daño: solo dirige la cadena y lleva la barra del jefe.
             var root = new GameObject("Rabia_Hipocampo");
+            root.layer = PhysicsLayers.Enemy;
+            var health = root.AddComponent<EnemyHealth>();
+            SetupUtils.SetRef(health, "data", data.RabiaJefe);
+            SetupUtils.SetRef(health, "effectivenessTable", data.Table);
+
+            var boss = root.AddComponent<RabiesBoss>();
+            SetupUtils.SetRef(boss, "segmentPrefab", virion);
+            SetupUtils.SetRef(boss, "segmentData", data.RabiaVirion);
+            SetupUtils.SetRef(boss, "projectilePrefab", EnemyProjectile);
+            SetupUtils.SetRef(boss, "stormPrefab", Storm);
+            return root;
+        }
+
+        /// <summary>Virión de rabia (forma de bala con espículas). La cabeza muestra ojos y punta brillante.</summary>
+        private GameObject BuildRabiesVirion()
+        {
+            EnemyData d = data.RabiaVirion;
+            var root = new GameObject("Rabia_Virion");
             root.layer = PhysicsLayers.Enemy;
             root.AddComponent<SortingGroup>().sortingOrder = 6;
 
-            // Forma de bala (como el virus real), con espículas de glicoproteína y líneas que brillan.
             GameObject visual = SetupUtils.Child(root.transform, "Visual", Vector3.zero);
             Transform v = visual.transform;
             var body = new System.Collections.Generic.List<Object>();
-            body.Add(SetupUtils.SpriteChild(v, "Cuerpo", PlaceholderArt.Capsule, d.tint, Vector3.zero, new Vector2(3.4f, 1.4f), 0));
+            body.Add(SetupUtils.SpriteChild(v, "Cuerpo", PlaceholderArt.Capsule, d.tint, Vector3.zero, new Vector2(1.05f, 0.62f), 0));
             body.Add(SetupUtils.SpriteChild(v, "Punta", PlaceholderArt.Circle, Color.Lerp(d.tint, Color.white, 0.15f),
-                new Vector3(1.25f, 0f, 0f), new Vector2(1.3f, 1.4f), 1));
+                new Vector3(0.32f, 0f, 0f), new Vector2(0.5f, 0.62f), 1));
             body.Add(SetupUtils.SpriteChild(v, "Base", PlaceholderArt.SquareCentered, Color.Lerp(d.tint, Color.black, 0.25f),
-                new Vector3(-1.55f, 0f, 0f), new Vector2(0.35f, 1.3f), 1));
-            for (int i = 0; i < 9; i++)
+                new Vector3(-0.47f, 0f, 0f), new Vector2(0.12f, 0.58f), 1));
+            for (int i = 0; i < 4; i++)
             {
-                float x = -1.4f + i * 0.33f;
-                body.Add(SetupUtils.SpriteChild(v, "EspiculaArriba" + i, PlaceholderArt.Capsule, Color.Lerp(d.tint, Color.black, 0.3f),
-                    new Vector3(x, 0.82f, 0f), new Vector2(0.38f, 0.13f), -1));
-                body.Add(SetupUtils.SpriteChild(v, "EspiculaAbajo" + i, PlaceholderArt.Capsule, Color.Lerp(d.tint, Color.black, 0.3f),
-                    new Vector3(x, -0.82f, 0f), new Vector2(0.38f, 0.13f), -1));
+                float x = -0.35f + i * 0.22f;
+                var up = SetupUtils.SpriteChild(v, "EspiculaArriba" + i, PlaceholderArt.Capsule, Color.Lerp(d.tint, Color.black, 0.3f),
+                    new Vector3(x, 0.38f, 0f), new Vector2(0.2f, 0.08f), -1);
+                up.transform.localRotation = Quaternion.Euler(0f, 0f, 90f);
+                var down = SetupUtils.SpriteChild(v, "EspiculaAbajo" + i, PlaceholderArt.Capsule, Color.Lerp(d.tint, Color.black, 0.3f),
+                    new Vector3(x, -0.38f, 0f), new Vector2(0.2f, 0.08f), -1);
+                down.transform.localRotation = Quaternion.Euler(0f, 0f, 90f);
+                body.Add(up);
+                body.Add(down);
             }
-            foreach (Transform t in v)
-                if (t.name.StartsWith("Espicula")) t.localRotation = Quaternion.Euler(0f, 0f, 90f);
+            body.Add(SetupUtils.SpriteChild(v, "Linea", PlaceholderArt.Capsule, new Color(0.9f, 0.2f, 0.45f), new Vector3(-0.1f, 0f, 0f), new Vector2(0.7f, 0.07f), 2));
 
-            var glows = new System.Collections.Generic.List<Object>
-            {
-                SetupUtils.SpriteChild(v, "Ojo", PlaceholderArt.Circle, new Color(0.9f, 0.2f, 0.45f), new Vector3(1.35f, 0.15f, 0f), new Vector2(0.38f, 0.3f), 3),
-                SetupUtils.SpriteChild(v, "Linea1", PlaceholderArt.Capsule, new Color(0.9f, 0.2f, 0.45f), new Vector3(-0.2f, 0.3f, 0f), new Vector2(2.2f, 0.09f), 2),
-                SetupUtils.SpriteChild(v, "Linea2", PlaceholderArt.Capsule, new Color(0.9f, 0.2f, 0.45f), new Vector3(-0.2f, -0.3f, 0f), new Vector2(2.2f, 0.09f), 2)
-            };
+            // Partes de cabeza: ojo y halo rojo.
+            GameObject headGroup = SetupUtils.Child(v, "Cabeza", Vector3.zero);
+            SetupUtils.SpriteChild(headGroup.transform, "Halo", PlaceholderArt.Circle, new Color(1f, 0.2f, 0.45f, 0.35f), new Vector3(0.2f, 0f, 0f), new Vector2(1.3f, 1f), -2);
+            SetupUtils.SpriteChild(headGroup.transform, "Ojo", PlaceholderArt.Circle, new Color(1f, 0.25f, 0.5f), new Vector3(0.38f, 0.1f, 0f), new Vector2(0.2f, 0.16f), 3);
 
             var health = root.AddComponent<EnemyHealth>();
             SetupUtils.SetRef(health, "data", d);
@@ -538,16 +564,11 @@ namespace HealingKnight.EditorTools
             SetupUtils.SetRefArray(health, "flashRenderers", body.ToArray());
 
             var hurtbox = root.AddComponent<Hurtbox>();
-            SetHurtbox(hurtbox, Vector2.zero, new Vector2(3.6f, 1.6f));
+            SetHurtbox(hurtbox, Vector2.zero, new Vector2(1f, 0.75f));
 
-            var boss = root.AddComponent<RabiesBoss>();
-            SetupUtils.SetRef(boss, "visual", v);
-            SetupUtils.SetRefArray(boss, "glowRenderers", glows.ToArray());
-            SetupUtils.SetRef(boss, "projectilePrefab", EnemyProjectile);
-            SetupUtils.SetRef(boss, "stormPrefab", Storm);
-            SetupUtils.SetRef(boss, "redNeuronPrefab", RedNeuron);
-            SetupUtils.SetRef(boss, "minionPrefab", Rabia);
-            SetupUtils.SetRef(boss, "minionData", data.Rabia);
+            var seg = root.AddComponent<RabiesSegment>();
+            SetupUtils.SetRef(seg, "visual", v);
+            SetupUtils.SetRefArray(seg, "headParts", new Object[] { headGroup });
             return root;
         }
 

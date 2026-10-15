@@ -933,7 +933,7 @@ namespace HealingKnight.EditorTools
             new GameObject("SaludDelCerebro").AddComponent<BrainHealth>();
 
             // Entrada: un grupo y una neurona roja para calentar.
-            Arena("Arena_Entrada", 4f, 14f, "Prepárate: Antiviral para la rabia, Anticonvulsivo para las neuronas.",
+            Arena("Arena_Entrada", 4f, 14f, "Prepárate: Antiviral para la rabia, Anticonvulsivo para las neuronas rojas.",
                 W(0.6f, E(prefabs.Rabia, data.Rabia, 2), E(prefabs.Poliovirus, data.Poliovirus, 1)));
             Neuron(10f, 3.2f);
             RedNeuron(15f, 1.5f);
@@ -944,15 +944,18 @@ namespace HealingKnight.EditorTools
             // Arena del jefe: rieles de axones a dos alturas, neuronas sanas que puede infectar y plataformas.
             const float arenaX = 34f, arenaW = 30f;
             float left = arenaX - 3f, right = arenaX - 3f + arenaW;
-            AxonRail(left, right, 3.4f);
-            AxonRail(left, right, 6f);
+            // Rieles de la cadena (Centipede): baja de riel en cada orilla. En furia aparece uno a ras de piso.
+            AxonRail(left, right, 6.2f);
+            AxonRail(left, right, 4.4f);
+            AxonRail(left, right, 2.6f);
             Arena("Arena_Rabia", arenaX, arenaW, null,
                 W(1.2f, E(prefabs.RabiaJefe, data.RabiaJefe, 1)));
-            Neuron(left + 4f, 1.6f);
-            Neuron(left + 10f, 4.6f);
-            Neuron(left + 16f, 1.4f);
-            Neuron(left + 22f, 4.6f);
-            Neuron(left + 27f, 1.6f);
+            // Neuronas cerca de los rieles: la cadena las infecta al pasar (fase 2).
+            Neuron(left + 4f, 3.4f);
+            Neuron(left + 10f, 5.3f);
+            Neuron(left + 16f, 3.4f);
+            Neuron(left + 22f, 5.3f);
+            Neuron(left + 27f, 3.4f);
             Platform(left + 7f, 2.4f, 2.6f);
             Platform(left + 13f, 4.2f, 2.6f);
             Platform(left + 19f, 2.4f, 2.6f);
@@ -1026,15 +1029,15 @@ namespace HealingKnight.EditorTools
                 detail = new Color(0.35f, 0.65f, 1f, 0.7f),
                 glow = new Color(0.75f, 0.5f, 1f, 1f), // luz del hipocampo al final
                 platformStems = true
-            }, "NODO: Cerebro. Las neuronas azules están SANAS: si les disparas, dañas el cerebro y ese daño no se recupera.",
+            }, "NODO: Cerebro. Protege las neuronas azules: los disparos ENEMIGOS las dañan y las infectan. Las tuyas las atraviesan.",
                 new Vector2(29f, 4f), new Vector2(70f, 4f), new Vector2(84f, 4f));
 
             // Salud del cerebro (segunda barra del HUD).
             new GameObject("SaludDelCerebro").AddComponent<BrainHealth>();
-            SetMessage("Tu cápsula regional es el ANTICONVULSIVO: atraviesa neuronas sanas sin dañarlas. Su bomba (L/F) las protege 8 s.", 1f);
+            SetMessage("Tu cápsula regional es el ANTICONVULSIVO: calma neuronas rojas. Su bomba (L/F) protege a las neuronas 8 s.", 1f);
 
             // Tramo 1
-            Arena("Tramo_1_Meningitis", 8f, 20f, "Apunta con cuidado: las neuronas sanas detienen tus cápsulas (−5 de salud del cerebro).",
+            Arena("Tramo_1_Meningitis", 8f, 20f, "Acaba rápido con los virus: si sus disparos pegan en las neuronas, el cerebro sufre y se infectan.",
                 W(0.6f, E(prefabs.Meningococo, data.Meningococo, 2), E(prefabs.Herpes, data.Herpes, 1)),
                 W(1.0f, E(prefabs.Poliovirus, data.Poliovirus, 2), E(prefabs.Meningococo, data.Meningococo, 1, SpawnSide.Left)));
             Neuron(14f, 2.2f);
@@ -1044,7 +1047,7 @@ namespace HealingKnight.EditorTools
             Platform(22f, 2.4f, 2.4f);
 
             // Primera neurona hiperexcitada (roja): suelta descargas. Cálmala con Anticonvulsivo.
-            SetMessage("Neurona ROJA hiperexcitada: suelta descargas eléctricas. Cálmala con ANTICONVULSIVO y vuelve a estar sana (+5 cerebro).", 24f);
+            SetMessage("Neurona ROJA hiperexcitada: suelta descargas y desgasta el cerebro. Cálmala con ANTICONVULSIVO (+5 cerebro).", 24f);
             RedNeuron(26.5f, 1.6f);
 
             // Puente de dendritas sobre el primer hueco, con tormenta.
@@ -1059,7 +1062,7 @@ namespace HealingKnight.EditorTools
                 W(0.6f, E(prefabs.Herpes, data.Herpes, 2), E(prefabs.Rabia, data.Rabia, 2, SpawnSide.Left)),
                 W(1.0f, E(prefabs.Meningococo, data.Meningococo, 3, SpawnSide.Both), E(prefabs.Poliovirus, data.Poliovirus, 1)));
             Storm(43f, 68f);
-            Neuron(52f, 1.1f);   // baja: agáchate para disparar por debajo
+            Neuron(52f, 1.1f);
             Neuron(57.5f, 3.4f);
             Neuron(63f, 1.8f);
             RedNeuron(48.5f, 3.6f);
@@ -1078,7 +1081,7 @@ namespace HealingKnight.EditorTools
             RedNeuron(76f, 4.4f);
 
             // Tramo 3 (clímax sin jefe): la mayor cantidad de enemigos rodeados de neuronas sanas.
-            Arena("Tramo_3_Corteza", 92f, 24f, "NODO: Última zona antes del hipocampo. Muchos patógenos... y muchas neuronas sanas. Cuida el cerebro.",
+            Arena("Tramo_3_Corteza", 92f, 24f, "NODO: Última zona antes del hipocampo. Muchos virus apuntando a las neuronas: sé rápido.",
                 W(0.6f, E(prefabs.Meningococo, data.Meningococo, 4, SpawnSide.Both)),
                 W(1.0f, E(prefabs.Herpes, data.Herpes, 2), E(prefabs.Rabia, data.Rabia, 2, SpawnSide.Left)),
                 W(1.2f, E(prefabs.Herpes, data.Herpes, 1), E(prefabs.Poliovirus, data.Poliovirus, 3), E(prefabs.Meningococo, data.Meningococo, 2, SpawnSide.Left)));

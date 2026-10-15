@@ -18,7 +18,7 @@ namespace HealingKnight.EditorTools
         public EnemyData HPylori, Giardia, Rotavirus, Entamoeba, CDifficile, Oxiuro, SMutans, Lombriz;
         public EnemyData Rinovirus, Polen, SAureus, Pertussis, Neumococo, Influenza, Tuberculosis;
         public EnemyData Mucosidad, Inflamacion, Colmena;
-        public EnemyData Poliovirus, Meningococo, Herpes, Rabia, NeuronaHiperexcitada, RabiaJefe;
+        public EnemyData Poliovirus, Meningococo, Herpes, Rabia, NeuronaHiperexcitada, RabiaJefe, RabiaVirion;
         public GameCatalog Catalog;
         public LevelData DigestivoEstomago, DigestivoDelgado, DigestivoGrueso, DigestivoBoca;
         public LevelData RespiratorioNariz, RespiratorioTraquea, RespiratorioPulmones;
@@ -56,7 +56,7 @@ namespace HealingKnight.EditorTools
             Mucolitico = Med("Mucolitico", "Mucolítico", new Color(0.55f, 1f, 0.6f), true, "Cápsula regional del Sistema Respiratorio. Disuelve la mucosidad.");
             Anticonvulsivo = Med("Anticonvulsivo", "Anticonvulsivo", new Color(1f, 0.85f, 0.3f), true,
                 "Cápsula regional del Sistema Nervioso (como la fenitoína o el levetiracetam): calma las neuronas hiperexcitadas. " +
-                "No daña neuronas sanas y su bomba deja un campo neuroprotector. Parcial contra bacterias y virus.");
+                "Su bomba deja un campo neuroprotector. Parcial contra bacterias y virus.");
             if (!Anticonvulsivo.calmsNeurons)
             {
                 Anticonvulsivo.calmsNeurons = true;
@@ -373,12 +373,24 @@ namespace HealingKnight.EditorTools
                 e.tint = new Color(1f, 0.25f, 0.3f);
             });
 
+            // Jefe: cadena de viriones (Centipede). La raíz solo lleva la barra; cada virión tiene su vida.
+            RabiaVirion = Enemy("Jefe_Rabia_Virion", e =>
+            {
+                e.displayName = "Virión de rabia";
+                e.threat = ThreatType.Virus;
+                e.movement = EnemyMovement.Flying;
+                e.maxHealth = 35f;
+                e.meleeDamageTakenMultiplier = 0.6f;
+                e.knockbackResistance = 1f; e.hurtStunTime = 0f; e.linfocitoCharge = 1;
+                e.tint = new Color(0.45f, 0.4f, 0.55f);
+            });
+
             RabiaJefe = Enemy("Jefe_Rabia", e =>
             {
                 e.displayName = "Virus de la rabia (jefe)";
                 e.threat = ThreatType.Virus;
-                e.movement = EnemyMovement.Flying; e.flyHeight = 3.4f;
-                e.maxHealth = 480f;
+                e.movement = EnemyMovement.Flying; e.flyHeight = 5.2f;
+                e.maxHealth = 100f;
                 e.meleeDamageTakenMultiplier = 0.5f;
                 e.knockbackResistance = 1f; e.hurtStunTime = 0f; e.linfocitoCharge = 6;
                 e.tint = new Color(0.42f, 0.38f, 0.5f);

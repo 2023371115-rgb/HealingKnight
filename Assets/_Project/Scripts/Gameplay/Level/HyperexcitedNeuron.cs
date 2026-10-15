@@ -18,6 +18,8 @@ namespace HealingKnight.Gameplay.Level
     {
         [SerializeField] private HealthyNeuron healedPrefab;
         [SerializeField] private float brainHealOnCure = 5f;
+        [Tooltip("Mientras siga roja, el cerebro pierde salud poco a poco (te apura a calmarla).")]
+        [SerializeField] private float brainDrainPerSecond = 0.25f;
 
         [Header("Descarga")]
         [SerializeField] private float interval = 4.5f;
@@ -47,6 +49,7 @@ namespace HealingKnight.Gameplay.Level
         {
             if (!health.IsAlive) return;
             timer -= Time.deltaTime;
+            if (BrainHealth.Current != null) BrainHealth.Current.Damage(brainDrainPerSecond * Time.deltaTime);
 
             if (timer <= warningTime && ring != null)
             {

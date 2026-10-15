@@ -97,8 +97,8 @@ namespace HealingKnight.Gameplay.Combat
             travelled += step;
 
             Hurtbox target = Hurtbox.FirstInCircle(shot.targetTeam, next, shot.radius);
-            // Lo neutral (neuronas sanas del cerebro) también detiene el disparo y recibe el daño colateral.
-            if (target == null) target = Hurtbox.FirstInCircle(Team.Neutral, next, shot.radius);
+            // Los proyectiles ENEMIGOS también pegan en lo neutral (neuronas sanas). Los del jugador las atraviesan.
+            if (target == null && shot.sourceTeam == Team.Enemy) target = Hurtbox.FirstInCircle(Team.Neutral, next, shot.radius);
             if (target != null)
             {
                 DamageInfo info = DamageInfo.Create(shot.damage, DamageKind.Projectile, shot.sourceTeam, previous);
