@@ -761,12 +761,12 @@ namespace HealingKnight.EditorTools
 
             // Bronquiolos: los alvéolos RESPIRAN (rosados): se inflan, tiemblan y se desinflan. Salta cuando estén llenos.
             // Reglas: huecos de máx. 4.5 u, repisa destino a máx. 3.5 u arriba del alvéolo, 5.5 u libres arriba.
-            SetMessage("NODO: Los alvéolos respiran. Si caes en uno INFLADO te impulsa muy alto; desinflado es una plataforma normal.", 27f);
+            SetMessage("NODO: Los alvéolos respiran. Inflados son trampolines que te lanzan muy alto; desinflados son una plataforma normal.", 27f);
             Alveolus(32f, 1.2f, 2f, 0f);          // sobre el hueco 1 (4 u)
             Platform(35.8f, 4.4f, 2.4f);           // repisa: 3.2 u arriba del alvéolo
-            Alveolus(39.5f, 1.2f, 2f, 1f);         // desfasado 1 s
+            Alveolus(39.5f, 1.2f, 2f, 1.4f);       // desfasado 1.4 s
             Platform(43f, 4.6f, 2.4f);             // repisa: 3.4 u arriba
-            Alveolus(47.2f, 1.2f, 1.8f, 2f);       // sobre el hueco 2 (4.5 u), desfasado 2 s
+            Alveolus(47.2f, 1.2f, 1.8f, 2.75f);    // sobre el hueco 2 (4.5 u), alternado con el primero
             Platform(51.2f, 4.2f, 2f);
 
             // Tramo 2
@@ -778,10 +778,9 @@ namespace HealingKnight.EditorTools
             Alveolus(61f, 3.8f, 2.4f);
             Alveolus(66f, 2.4f, 2.4f);
 
-            // Secuencia de timing sobre el hueco 3 (4.5 u): dos alvéolos desfasados 2 s
-            // (cuando uno está inflado el otro está desinflado).
+            // Secuencia de timing sobre el hueco 3 (4.5 u): dos alvéolos alternados (medio ciclo de diferencia).
             Alveolus(77.2f, 1.2f, 1.6f, 0f);
-            Alveolus(79.6f, 1.2f, 1.6f, 2f);
+            Alveolus(79.6f, 1.2f, 1.6f, 2.75f);
             Platform(84f, 2.4f, 2.4f);
             Platform(87f, 4.2f, 2.2f);
 
@@ -803,7 +802,7 @@ namespace HealingKnight.EditorTools
 
         /// <summary>Alvéolo: plataforma de un solo sentido que se ve como racimo de burbujas.</summary>
         /// <summary>
-        /// Alvéolo. Con 'breathOffset' entre 0 y 2 s respira (BreathingPlatform: ciclo de 4 s, rebota a 4 u
+        /// Alvéolo. Con 'breathOffset' (segundos) respira (BreathingPlatform: ciclo de 5.5 s, trampolín a 4 u
         /// cuando está inflado); con un valor negativo es fijo. Reglas: 5.5 u libres arriba, repisa destino
         /// a máximo 3.5 u del alvéolo y huecos de máximo 4.5 u.
         /// </summary>
@@ -844,7 +843,7 @@ namespace HealingKnight.EditorTools
             {
                 var breath = go.AddComponent<BreathingPlatform>();
                 SetupUtils.SetRef(breath, "visual", visual);
-                SetupUtils.SetFloat(breath, "phaseOffset", Mathf.Clamp(breathOffset, 0f, 2f));
+                SetupUtils.SetFloat(breath, "phaseOffset", Mathf.Clamp(breathOffset, 0f, 5.5f));
             }
         }
 
