@@ -79,6 +79,12 @@ namespace HealingKnight.EditorTools
         [MenuItem("Healing Knight/Abrir escena/Respiratorio · Pulmones", priority = 32)]
         private static void OpenPulmones() => Open(SceneSetup.PulmonesPath);
 
+        [MenuItem("Healing Knight/Abrir escena/Nervioso · Médula espinal", priority = 33)]
+        private static void OpenMedula() => Open(SceneSetup.MedulaPath);
+
+        [MenuItem("Healing Knight/Abrir escena/Nervioso · Cerebro", priority = 34)]
+        private static void OpenCerebro() => Open(SceneSetup.CerebroPath);
+
         [MenuItem("Healing Knight/Abrir escena/Sandbox", priority = 40)]
         private static void OpenSandbox() => Open(SceneSetup.SandboxPath);
 

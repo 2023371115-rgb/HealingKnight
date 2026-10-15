@@ -18,9 +18,11 @@ namespace HealingKnight.EditorTools
         public EnemyData HPylori, Giardia, Rotavirus, Entamoeba, CDifficile, Oxiuro, SMutans, Lombriz;
         public EnemyData Rinovirus, Polen, SAureus, Pertussis, Neumococo, Influenza, Tuberculosis;
         public EnemyData Mucosidad, Inflamacion, Colmena;
+        public EnemyData Poliovirus, Meningococo, Herpes, Rabia;
         public GameCatalog Catalog;
         public LevelData DigestivoEstomago, DigestivoDelgado, DigestivoGrueso, DigestivoBoca;
         public LevelData RespiratorioNariz, RespiratorioTraquea, RespiratorioPulmones;
+        public LevelData NerviosoMedula, NerviosoCerebro;
 
         public void Run()
         {
@@ -29,6 +31,7 @@ namespace HealingKnight.EditorTools
             CreatePlayerConfig();
             CreateEnemies();
             CreateRespiratoryEnemies();
+            CreateNervousEnemies();
             CreateCatalog();
         }
 
@@ -304,6 +307,56 @@ namespace HealingKnight.EditorTools
             });
         }
 
+        private void CreateNervousEnemies()
+        {
+            // Sistema Nervioso (GDD: virus y bacterias entre neuronas sanas). Patógenos reales del sistema nervioso.
+            Poliovirus = Enemy("Virus_Poliovirus", e =>
+            {
+                e.displayName = "Poliovirus";
+                e.threat = ThreatType.Virus;
+                e.movement = EnemyMovement.Flying; e.flyHeight = 2.2f;
+                e.maxHealth = 18f; e.moveSpeed = 2.4f;
+                e.attackType = EnemyAttackType.Ranged;
+                e.attackDistance = 5f; e.attackWindup = 0.4f; e.attackCooldown = 2.4f; e.attackDamage = 10f;
+                e.projectileColor = new Color(0.6f, 0.9f, 1f);
+                e.tint = new Color(0.4f, 0.8f, 0.95f);
+                e.visualScale = 0.85f;
+            });
+
+            Meningococo = Enemy("Bacteria_Meningococo", e =>
+            {
+                e.displayName = "N. meningitidis (meningitis)";
+                e.threat = ThreatType.Bacteria;
+                e.maxHealth = 22f; e.moveSpeed = 3.2f;
+                e.attackDistance = 1f; e.attackWindup = 0.35f; e.attackDamage = 10f;
+                e.tint = new Color(0.95f, 0.45f, 0.65f);
+            });
+
+            Herpes = Enemy("Virus_Herpes", e =>
+            {
+                e.displayName = "Herpes simple (encefalitis)";
+                e.threat = ThreatType.Virus;
+                e.movement = EnemyMovement.Flying; e.flyHeight = 3f;
+                e.maxHealth = 30f; e.moveSpeed = 1.8f;
+                e.attackType = EnemyAttackType.Ranged;
+                e.attackDistance = 6f; e.attackWindup = 0.45f; e.attackCooldown = 2.2f; e.attackDamage = 12f;
+                e.projectileSpeed = 7.5f;
+                e.projectileColor = new Color(1f, 0.55f, 0.9f);
+                e.tint = new Color(0.85f, 0.4f, 0.95f);
+                e.visualScale = 1.25f;
+            });
+
+            Rabia = Enemy("Virus_Rabia", e =>
+            {
+                e.displayName = "Virus de la rabia";
+                e.threat = ThreatType.Virus;
+                e.movement = EnemyMovement.Flying; e.flyHeight = 1f;
+                e.maxHealth = 20f; e.moveSpeed = 3.2f;
+                e.attackDistance = 1.2f; e.attackWindup = 0.35f; e.attackCooldown = 1.4f; e.attackDamage = 12f; e.attackKnockback = 5f;
+                e.tint = new Color(0.95f, 0.85f, 0.4f);
+            });
+        }
+
         private LevelData Level(string system, string file, string id, string name, string scene, bool formula, string objective)
         {
             return SetupUtils.LoadOrCreate<LevelData>($"{DataFolder}/Systems/{system}/{file}.asset", l =>
@@ -379,11 +432,15 @@ namespace HealingKnight.EditorTools
                 "La mucosidad atrapa a los patógenos y los protege del medicamento.",
                 RespiratorioNariz, RespiratorioTraquea, RespiratorioPulmones);
 
+            NerviosoMedula = PlayableLevel("Nervioso", "01_Medula", "nervioso_medula", "Médula espinal", "Nervioso_Medula", false,
+                "Poliovirus y meningococo suben por la médula. Esquiva las tormentas eléctricas.");
+            NerviosoCerebro = PlayableLevel("Nervioso", "02_Cerebro", "nervioso_cerebro", "Cerebro", "Nervioso_Cerebro", true,
+                "Elimina la infección sin dañar las neuronas sanas. Llega al hipocampo con el cerebro a salvo. Fórmula 3.");
+
             SystemData nervioso = MakeSystem("Nervioso", "nervioso", "Sistema Nervioso", "III", null,
                 new Color(0.7f, 0.5f, 1f), new Vector2(0.5f, 0.9f),
                 "Tormentas eléctricas y tejido sano que hay que proteger.",
-                Level("Nervioso", "01_Medula", "nervioso_medula", "Médula espinal", "", false, ""),
-                Level("Nervioso", "02_Cerebro", "nervioso_cerebro", "Cerebro", "", true, ""));
+                NerviosoMedula, NerviosoCerebro);
 
             SystemData circulatorio = MakeSystem("Circulatorio", "circulatorio", "Sistema Circulatorio", "IV", null,
                 new Color(0.9f, 0.2f, 0.25f), new Vector2(0.45f, 0.65f),

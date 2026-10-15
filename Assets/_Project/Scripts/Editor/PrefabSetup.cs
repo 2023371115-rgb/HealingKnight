@@ -25,6 +25,9 @@ namespace HealingKnight.EditorTools
         public EnemyHealth LombrizDelgado, LombrizGrueso;
         public EnemyHealth Rinovirus, Polen, SAureus, Pertussis, Neumococo, Influenza, Tuberculosis;
         public EnemyHealth Mucosidad, Inflamacion, Colmena;
+        public EnemyHealth Poliovirus, Meningococo, Herpes, Rabia;
+        public HealthyNeuron Neuron;
+        public LightningStorm Storm;
         public AcidPool Acid;
         public SecretPassage Secret;
 
@@ -69,6 +72,14 @@ namespace HealingKnight.EditorTools
             Tuberculosis = Enemy("Bacteria_Tuberculosis", data.Tuberculosis, EnemyShape.Capsule);
             Mucosidad = LoadOrBuild<EnemyHealth>($"{Folder}/Hazards/Bloqueo_Mucosidad.prefab", () => BuildObstacle("Bloqueo_Mucosidad", data.Mucosidad, true));
             Inflamacion = LoadOrBuild<EnemyHealth>($"{Folder}/Hazards/Bloqueo_Inflamacion.prefab", () => BuildObstacle("Bloqueo_Inflamacion", data.Inflamacion, false));
+
+            // Sistema Nervioso
+            Poliovirus = Enemy("Virus_Poliovirus", data.Poliovirus, EnemyShape.Round);
+            Meningococo = Enemy("Bacteria_Meningococo", data.Meningococo, EnemyShape.Diplo);
+            Herpes = Enemy("Virus_Herpes", data.Herpes, EnemyShape.Round);
+            Rabia = Enemy("Virus_Rabia", data.Rabia, EnemyShape.Bullet);
+            Neuron = LoadOrBuild<HealthyNeuron>($"{Folder}/Level/Neurona_Sana.prefab", BuildNeuron);
+            Storm = LoadOrBuild<LightningStorm>($"{Folder}/Hazards/Tormenta_Electrica.prefab", BuildStorm);
 
             Colmena = LoadOrBuild<EnemyHealth>($"{Folder}/Bosses/Colmena_Pulmones.prefab", BuildHive);
 
@@ -225,7 +236,7 @@ namespace HealingKnight.EditorTools
 
         // ---------- Enemigos ----------
 
-        private enum EnemyShape { Long, Capsule, Round, Blob, Pear, Cluster, Diplo, Pollen }
+        private enum EnemyShape { Long, Capsule, Round, Blob, Pear, Cluster, Diplo, Pollen, Bullet }
 
         private GameObject BuildEnemy(string name, EnemyData enemyData, EnemyShape shape)
         {
@@ -284,6 +295,16 @@ namespace HealingKnight.EditorTools
                     SetupUtils.SpriteChild(visual.transform, "Twin", PlaceholderArt.Circle, Color.Lerp(enemyData.tint, Color.black, 0.12f),
                         new Vector3(-0.25f * s, 0.32f * s, 0f), new Vector2(0.62f * s, 0.62f * s), -1);
                     bodySize = new Vector2(1.05f * s, 0.65f * s);
+                    break;
+                case EnemyShape.Bullet: // virus de la rabia: forma de bala
+                    bodySprite = SetupUtils.SpriteChild(visual.transform, "Body", PlaceholderArt.Capsule, enemyData.tint,
+                        Vector3.zero, new Vector2(1.2f * s, 0.55f * s), 0);
+                    SetupUtils.SpriteChild(visual.transform, "Tip", PlaceholderArt.Circle, Color.Lerp(enemyData.tint, Color.white, 0.25f),
+                        new Vector3(0.45f * s, 0f, 0f), new Vector2(0.45f * s, 0.5f * s), 1);
+                    for (int i = 0; i < 5; i++)
+                        SetupUtils.SpriteChild(visual.transform, "Spike" + i, PlaceholderArt.Circle, Color.Lerp(enemyData.tint, Color.black, 0.2f),
+                            new Vector3((-0.4f + i * 0.2f) * s, 0.3f * s, 0f), new Vector2(0.12f * s, 0.12f * s), -1);
+                    bodySize = new Vector2(1.2f * s, 0.6f * s);
                     break;
                 case EnemyShape.Pollen: // polen: esfera con muchas bolitas
                     bodySprite = SetupUtils.SpriteChild(visual.transform, "Body", PlaceholderArt.Circle, enemyData.tint,
@@ -380,6 +401,56 @@ namespace HealingKnight.EditorTools
                 SetupUtils.SetRef(boss, "minionPrefab", minionPrefab);
                 SetupUtils.SetRef(boss, "minionData", minionData);
             }
+            return root;
+        }
+
+        // ---------- Sistema Nervioso ----------
+
+        /// <summary>Neurona sana: cuerpo azul brillante con dendritas. Si la tocas con una cápsula, baja la salud del cerebro.</summary>
+        private GameObject BuildNeuron()
+        {
+            var root = new GameObject("Neurona_Sana");
+            root.AddComponent<SortingGroup>().sortingOrder = 2;
+            var parts = new System.Collections.Generic.List<Object>();
+
+            parts.Add(SetupUtils.SpriteChild(root.transform, "Halo", PlaceholderArt.Circle, new Color(0.35f, 0.7f, 1f, 0.25f),
+                Vector3.zero, new Vector2(2.2f, 2.2f), -2));
+            for (int i = 0; i < 6; i++)
+            {
+                float a = (i * 60f + 15f) * Mathf.Deg2Rad;
+                float len = 0.9f + (i % 2) * 0.4f;
+                var dendrite = SetupUtils.SpriteChild(root.transform, "Dendrita" + i, PlaceholderArt.Capsule, new Color(0.4f, 0.75f, 1f, 0.9f),
+                    new Vector3(Mathf.Cos(a) * len * 0.5f, Mathf.Sin(a) * len * 0.5f, 0f), new Vector2(len, 0.14f), -1);
+                dendrite.transform.localRotation = Quaternion.Euler(0f, 0f, i * 60f + 15f);
+                parts.Add(dendrite);
+            }
+            parts.Add(SetupUtils.SpriteChild(root.transform, "Soma", PlaceholderArt.Circle, new Color(0.45f, 0.8f, 1f), Vector3.zero, new Vector2(0.75f, 0.75f), 0));
+            parts.Add(SetupUtils.SpriteChild(root.transform, "Nucleo", PlaceholderArt.Circle, new Color(0.85f, 0.97f, 1f), Vector3.zero, new Vector2(0.3f, 0.3f), 1));
+
+            var neuron = root.AddComponent<HealthyNeuron>();
+            SetupUtils.SetRefArray(neuron, "renderers", parts.ToArray());
+            var hurtbox = root.AddComponent<Hurtbox>();
+            SetHurtbox(hurtbox, Vector2.zero, new Vector2(0.9f, 0.9f));
+            return root;
+        }
+
+        /// <summary>Tormenta eléctrica: aviso (columna que parpadea) y rayo. El script los mueve a donde cae.</summary>
+        private GameObject BuildStorm()
+        {
+            var root = new GameObject("Tormenta_Electrica");
+            root.AddComponent<SortingGroup>().sortingOrder = 30;
+            var storm = root.AddComponent<LightningStorm>();
+
+            var warning = SetupUtils.SpriteChild(root.transform, "Aviso", PlaceholderArt.Square, new Color(0.85f, 0.6f, 1f, 0.3f),
+                Vector3.zero, new Vector2(2f, 14f), 0);
+            var bolt = SetupUtils.SpriteChild(root.transform, "Rayo", PlaceholderArt.Square, new Color(0.95f, 0.85f, 1f, 0.95f),
+                Vector3.zero, new Vector2(2f, 14f), 2);
+            var glow = SetupUtils.SpriteChild(root.transform, "Brillo", PlaceholderArt.Circle, new Color(0.8f, 0.5f, 1f, 0.6f),
+                Vector3.zero, new Vector2(3f, 0.8f), 1);
+
+            SetupUtils.SetRef(storm, "warningRenderer", warning);
+            SetupUtils.SetRef(storm, "boltRenderer", bolt);
+            SetupUtils.SetRef(storm, "groundGlow", glow);
             return root;
         }
 

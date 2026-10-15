@@ -25,6 +25,9 @@ namespace HealingKnight.UI
         private TextMeshProUGUI controlsText;
         private TextMeshProUGUI bombsText;
         private UIBar bombChargeBar;
+        private GameObject brainRoot;
+        private UIBar brainBar;
+        private BrainHealth brain;
         private GameObject bossRoot;
         private UIBar bossBar;
         private TextMeshProUGUI bossNameText;
@@ -60,10 +63,19 @@ namespace HealingKnight.UI
             GameplayEvents.BossStarted -= OnBossStarted;
             GameplayEvents.BossEnded -= OnBossEnded;
             Unbind();
+            if (brain != null) brain.Changed -= OnBrainChanged;
         }
 
         private void Start()
         {
+            brain = BrainHealth.Current;
+            if (brain != null)
+            {
+                brainRoot.SetActive(true);
+                brainBar.SetValue(brain.Health01, true);
+                brain.Changed += OnBrainChanged;
+            }
+
             var level = GameSession.CurrentLevel;
             var system = GameSession.CurrentSystem;
             levelText.text = level != null
@@ -101,6 +113,16 @@ namespace HealingKnight.UI
 
             medicationText = UIFactory.Text(panel.transform, "", 28f, UIFactory.TextColor, TextAlignmentOptions.Left);
             UIFactory.Place(medicationText.rectTransform, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(66f, -120f), new Vector2(470f, 40f));
+
+            // Salud del cerebro (solo en niveles con BrainHealth, GDD 5.14)
+            Image brainPanel = UIFactory.Panel(root, "BrainPanel", new Color(0.1f, 0f, 0.15f, 0.45f));
+            UIFactory.Place(brainPanel.rectTransform, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(30f, -210f), new Vector2(560f, 70f));
+            TextMeshProUGUI brainLabel = UIFactory.Text(brainPanel.transform, "SALUD DEL CEREBRO", 22f, new Color(0.85f, 0.7f, 1f), TextAlignmentOptions.Left);
+            UIFactory.Place(brainLabel.rectTransform, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(20f, -4f), new Vector2(520f, 28f));
+            brainBar = UIFactory.Bar(brainPanel.transform, "Brain", new Color(0.7f, 0.4f, 1f), new Vector2(520f, 24f));
+            UIFactory.Place((RectTransform)brainBar.transform, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(20f, -36f), new Vector2(520f, 24f));
+            brainRoot = brainPanel.gameObject;
+            brainRoot.SetActive(false);
 
             // Nombre del nivel (arriba al centro)
             levelText = UIFactory.Text(root, "", 30f, new Color(1f, 1f, 1f, 0.85f));
@@ -164,6 +186,8 @@ namespace HealingKnight.UI
         private void OnHealthChanged(float current, float max) => healthBar.SetValue(max > 0f ? current / max : 0f);
 
         private void OnShieldChanged(float value01) => shieldBar.SetValue(value01);
+
+        private void OnBrainChanged(float current, float max) => brainBar.SetValue(max > 0f ? current / max : 0f);
 
         private void OnBombsChanged(int count) => bombsText.text = $"BOMBAS {count}";
 

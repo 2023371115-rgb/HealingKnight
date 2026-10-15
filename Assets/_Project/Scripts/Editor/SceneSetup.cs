@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.IO;
 using HealingKnight.Gameplay.CameraSystem;
 using HealingKnight.Gameplay.Enemies;
+using HealingKnight.Gameplay.Hazards;
 using HealingKnight.Gameplay.Level;
 using HealingKnight.Gameplay.Movement;
 using HealingKnight.UI;
@@ -42,6 +43,8 @@ namespace HealingKnight.EditorTools
         public static string NarizPath => $"{Folder}/Levels/Respiratorio/Respiratorio_Nariz.unity";
         public static string TraqueaPath => $"{Folder}/Levels/Respiratorio/Respiratorio_Traquea.unity";
         public static string PulmonesPath => $"{Folder}/Levels/Respiratorio/Respiratorio_Pulmones.unity";
+        public static string MedulaPath => $"{Folder}/Levels/Nervioso/Nervioso_Medula.unity";
+        public static string CerebroPath => $"{Folder}/Levels/Nervioso/Nervioso_Cerebro.unity";
 
         public void Run()
         {
@@ -54,6 +57,8 @@ namespace HealingKnight.EditorTools
             CreateIfMissing(NarizPath, BuildNariz);
             CreateIfMissing(TraqueaPath, BuildTraquea);
             CreateIfMissing(PulmonesPath, BuildPulmones);
+            CreateIfMissing(MedulaPath, BuildMedula);
+            CreateIfMissing(CerebroPath, BuildCerebro);
             CreateIfMissing(SandboxPath, BuildSandbox);
 
             EditorBuildSettings.scenes = new[]
@@ -67,6 +72,8 @@ namespace HealingKnight.EditorTools
                 new EditorBuildSettingsScene(NarizPath, true),
                 new EditorBuildSettingsScene(TraqueaPath, true),
                 new EditorBuildSettingsScene(PulmonesPath, true),
+                new EditorBuildSettingsScene(MedulaPath, true),
+                new EditorBuildSettingsScene(CerebroPath, true),
                 new EditorBuildSettingsScene(SandboxPath, true),
             };
         }
@@ -141,7 +148,7 @@ namespace HealingKnight.EditorTools
             if (intensityProp != null && intensityProp.CanWrite) intensityProp.SetValue(light, 1f);
         }
 
-        private enum Decor { Blobs, Rings, Alveoli, Veins, Villi, Folds }
+        private enum Decor { Blobs, Rings, Alveoli, Veins, Villi, Folds, Neurons }
 
         private struct LevelStyle
         {
@@ -155,8 +162,10 @@ namespace HealingKnight.EditorTools
             public Color pitLiquid;
             /// <summary>Si alfa > 0: gotas que escurren de las plataformas y la orilla del piso.</summary>
             public Color drip;
-            /// <summary>Venas o detalles del fondo (Decor.Veins/Villi/Folds).</summary>
+            /// <summary>Venas o detalles del fondo (Decor.Veins/Villi/Folds/Neurons).</summary>
             public Color detail;
+            /// <summary>Las plataformas tienen tallo hasta el piso (tejido nervioso tipo hongo).</summary>
+            public bool platformStems;
         }
 
         private const float FloorY = 0f;   // la parte de arriba del piso
@@ -282,6 +291,59 @@ namespace HealingKnight.EditorTools
                     }
                     break;
 
+                case Decor.Neurons: // cerebro: lóbulos de fondo, red de neuronas (sanas azules, infectadas rojas) y chispas
+                    {
+                        Color[] lobes = { new Color(0.2f, 0.25f, 0.75f, 0.5f), new Color(0.6f, 0.18f, 0.5f, 0.5f), new Color(0.15f, 0.6f, 0.7f, 0.45f) };
+                        for (float x = startX - 5f; x < endX + 10f; x += 7f + (float)random.NextDouble() * 4f)
+                        {
+                            Color lobe = lobes[random.Next(lobes.Length)];
+                            for (int i = 0; i < 4; i++)
+                            {
+                                float size = 2.5f + (float)random.NextDouble() * 2f;
+                                SetupUtils.SpriteChild(environment, "Lobulo", PlaceholderArt.Circle, lobe,
+                                    new Vector3(x + (i - 1.5f) * 1.6f, FloorY + 6.5f + (float)(random.NextDouble() - 0.5) * 2f, 0f),
+                                    new Vector2(size, size * 0.8f), -152);
+                            }
+                        }
+                        for (float x = startX - 5f; x < endX + 10f; x += 3.5f + (float)random.NextDouble() * 3f)
+                        {
+                            bool infected = random.NextDouble() < 0.25;
+                            Color c = infected ? new Color(1f, 0.25f, 0.3f, 0.7f) : style.detail;
+                            Vector3 p = new Vector3(x, FloorY + 2.5f + (float)random.NextDouble() * 5f, 0f);
+                            SetupUtils.SpriteChild(environment, "NeuronaFondo", PlaceholderArt.Circle, new Color(c.r, c.g, c.b, 0.2f), p, new Vector2(1.6f, 1.6f), -149);
+                            SetupUtils.SpriteChild(environment, "NeuronaFondoSoma", PlaceholderArt.Circle, c, p, new Vector2(0.45f, 0.45f), -148);
+                            for (int i = 0; i < 5; i++)
+                            {
+                                float a = (float)random.NextDouble() * 360f;
+                                float len = 1f + (float)random.NextDouble() * 1.8f;
+                                float rad = a * Mathf.Deg2Rad;
+                                SetupUtils.SpriteChild(environment, "Dendrita", PlaceholderArt.Capsule, new Color(c.r, c.g, c.b, 0.55f),
+                                    p + new Vector3(Mathf.Cos(rad) * len * 0.5f, Mathf.Sin(rad) * len * 0.5f, 0f), new Vector2(len, 0.07f), -149)
+                                    .transform.localRotation = Quaternion.Euler(0f, 0f, a);
+                            }
+                        }
+                        for (float x = startX - 5f; x < endX + 10f; x += 0.8f + (float)random.NextDouble() * 1.5f)
+                            SetupUtils.SpriteChild(environment, "Sinapsis", PlaceholderArt.Circle, new Color(1f, 0.85f, 0.4f, 0.8f),
+                                new Vector3(x, FloorY + 1f + (float)random.NextDouble() * 8f, 0f), new Vector2(0.1f, 0.1f), -147);
+                        // Rayos de fondo (estáticos) para la tormenta eléctrica.
+                        for (float x = startX + 10f; x < endX; x += 25f + (float)random.NextDouble() * 10f)
+                        {
+                            float y = FloorY + 10f;
+                            float bx = x;
+                            for (int i = 0; i < 6; i++)
+                            {
+                                float nx = bx + (float)(random.NextDouble() - 0.5) * 1.6f;
+                                float ny = y - 1.3f;
+                                Vector3 mid = new Vector3((bx + nx) * 0.5f, (y + ny) * 0.5f, 0f);
+                                float ang = Mathf.Atan2(ny - y, nx - bx) * Mathf.Rad2Deg;
+                                SetupUtils.SpriteChild(environment, "RayoFondo", PlaceholderArt.Capsule, new Color(0.85f, 0.6f, 1f, 0.35f),
+                                    mid, new Vector2(1.45f, 0.12f), -151).transform.localRotation = Quaternion.Euler(0f, 0f, ang);
+                                bx = nx; y = ny;
+                            }
+                        }
+                    }
+                    break;
+
                 default:
                     for (float x = startX - 5f; x < endX + 10f; x += 4f + (float)random.NextDouble() * 3f)
                     {
@@ -391,6 +453,19 @@ namespace HealingKnight.EditorTools
                 new Vector3(0f, -thickness, 0f), new Vector2(width, thickness), -90);
             SetupUtils.SpriteChild(go.transform, "Edge", PlaceholderArt.Square, currentStyle.floorEdge,
                 new Vector3(0f, -0.12f, 0f), new Vector2(width, 0.12f), -89);
+
+            if (currentStyle.platformStems)
+            {
+                // Tejido nervioso tipo hongo: borde redondeado y tallo hasta el piso.
+                float stemHeight = topY - FloorY + 3f;
+                Color stem = Color.Lerp(currentStyle.floor, currentStyle.wall, 0.4f);
+                SetupUtils.SpriteChild(go.transform, "Tallo", PlaceholderArt.Square, stem,
+                    new Vector3(0f, -stemHeight, 0f), new Vector2(Mathf.Min(0.8f, width * 0.35f), stemHeight - thickness), -92);
+                SetupUtils.SpriteChild(go.transform, "TalloBorde", PlaceholderArt.Square, new Color(currentStyle.floorEdge.r, currentStyle.floorEdge.g, currentStyle.floorEdge.b, 0.35f),
+                    new Vector3(Mathf.Min(0.8f, width * 0.35f) * 0.4f, -stemHeight, 0f), new Vector2(0.06f, stemHeight - thickness), -91);
+                SetupUtils.SpriteChild(go.transform, "Tapa", PlaceholderArt.Circle, Color.Lerp(currentStyle.floor, Color.white, 0.08f),
+                    new Vector3(0f, -0.2f, 0f), new Vector2(width + 0.3f, 0.55f), -91);
+            }
 
             if (currentStyle.drip.a > 0f)
             {
@@ -801,6 +876,150 @@ namespace HealingKnight.EditorTools
         }
 
         /// <summary>Alvéolo: plataforma de un solo sentido que se ve como racimo de burbujas.</summary>
+        // ---------- Sistema Nervioso (GDD 5.12, 5.14, 5.15: tormentas eléctricas, neuronas sanas y salud del cerebro) ----------
+        // Paleta de las imágenes de referencia: violeta profundo, bordes azul eléctrico, neuronas azules,
+        // neuronas infectadas rojas, chispas doradas de sinapsis y rayos violetas.
+
+        private static readonly Color NerveGlow = new Color(0.35f, 0.7f, 1f, 1f);
+
+        private void Storm(float fromX, float toX)
+        {
+            var storm = (GameObject)PrefabUtility.InstantiatePrefab(prefabs.Storm.gameObject);
+            storm.transform.position = new Vector3((fromX + toX) * 0.5f, FloorY, 0f);
+            var component = storm.GetComponent<LightningStorm>();
+            SetupUtils.SetFloat(component, "minX", fromX);
+            SetupUtils.SetFloat(component, "maxX", toX);
+            SetupUtils.SetFloat(component, "floorY", FloorY);
+        }
+
+        private void Neuron(float x, float y)
+        {
+            var neuron = (GameObject)PrefabUtility.InstantiatePrefab(prefabs.Neuron.gameObject);
+            neuron.transform.position = new Vector3(x, FloorY + y, 0f);
+        }
+
+        private void BuildMedula()
+        {
+            BuildLevelBase(100f, new LevelStyle
+            {
+                background = new Color(0.05f, 0.02f, 0.12f),
+                wall = new Color(0.2f, 0.08f, 0.32f),
+                floor = new Color(0.22f, 0.14f, 0.42f),
+                floorEdge = NerveGlow,
+                blob = new Color(0.45f, 0.3f, 0.75f, 0.3f), // vértebras / haces de fibras
+                decor = Decor.Rings,
+                glow = new Color(0.65f, 0.45f, 1f, 1f),
+                platformStems = true
+            }, "NODO: Sistema nervioso. Entraste por la médula espinal: la infección sube hacia el cerebro.",
+                new Vector2(30f, 3.5f), new Vector2(44f, 4f), new Vector2(78f, 3.5f));
+
+            Platform(2f, 2.4f, 3f);
+
+            Arena("Arena_1_Meningitis", 8f, 18f, "N. meningitidis: bacteria de la meningitis. Antibiótico.",
+                W(0.6f, E(prefabs.Meningococo, data.Meningococo, 2)),
+                W(1.0f, E(prefabs.Poliovirus, data.Poliovirus, 2), E(prefabs.Meningococo, data.Meningococo, 1, SpawnSide.Left)));
+            Platform(10f, 2.4f, 2.6f);
+            Platform(16f, 3.8f, 2.6f);
+            Platform(21f, 2.4f, 2.6f);
+
+            // Primera tormenta: aprende a leer el destello.
+            SetMessage("Tormenta eléctrica: cuando veas el destello violeta, sal de la columna. El escudo NO protege.", 25f);
+            Storm(25f, 50f);
+            Platform(31.75f, 2.4f, 1.6f);
+            Platform(37f, 2.4f, 2.4f);
+            Platform(40.5f, 4f, 2.4f);
+            Platform(44f, 5.6f, 2.4f);
+            Platform(47.5f, 4f, 2.4f);
+
+            Arena("Arena_2_Poliovirus", 54f, 20f, "Poliovirus ataca la médula: Antiviral. La rabia embiste: Antiviral. ¡Pelea bajo la tormenta!",
+                W(0.6f, E(prefabs.Rabia, data.Rabia, 2), E(prefabs.Meningococo, data.Meningococo, 2, SpawnSide.Left)),
+                W(1.0f, E(prefabs.Poliovirus, data.Poliovirus, 2), E(prefabs.Rabia, data.Rabia, 1)));
+            Storm(51f, 74f);
+            Platform(57f, 2.4f, 2.6f);
+            Platform(63f, 3.8f, 2.6f);
+            Platform(69f, 2.4f, 2.6f);
+
+            Platform(79.75f, 2.4f, 1.6f);
+        }
+
+        private void BuildCerebro()
+        {
+            LevelManager manager = BuildLevelBase(130f, new LevelStyle
+            {
+                background = new Color(0.04f, 0.02f, 0.1f),
+                wall = new Color(0.16f, 0.07f, 0.3f),
+                floor = new Color(0.2f, 0.12f, 0.4f),
+                floorEdge = NerveGlow,
+                blob = new Color(0.4f, 0.3f, 0.8f, 0.3f),
+                decor = Decor.Neurons,
+                detail = new Color(0.35f, 0.65f, 1f, 0.7f),
+                glow = new Color(0.75f, 0.5f, 1f, 1f), // luz del hipocampo al final
+                platformStems = true
+            }, "NODO: Cerebro. Las neuronas azules están SANAS: si les disparas, dañas el cerebro y ese daño no se recupera.",
+                new Vector2(29f, 4f), new Vector2(70f, 4f), new Vector2(84f, 4f));
+
+            // Salud del cerebro (segunda barra del HUD).
+            new GameObject("SaludDelCerebro").AddComponent<BrainHealth>();
+
+            // Tramo 1
+            Arena("Tramo_1_Meningitis", 8f, 20f, "Apunta con cuidado: las neuronas sanas detienen tus cápsulas (−5 de salud del cerebro).",
+                W(0.6f, E(prefabs.Meningococo, data.Meningococo, 2), E(prefabs.Herpes, data.Herpes, 1)),
+                W(1.0f, E(prefabs.Poliovirus, data.Poliovirus, 2), E(prefabs.Meningococo, data.Meningococo, 1, SpawnSide.Left)));
+            Neuron(14f, 2.2f);
+            Neuron(19.5f, 3.8f);
+            Platform(11f, 2.4f, 2.4f);
+            Platform(17f, 4.2f, 2.4f);
+            Platform(22f, 2.4f, 2.4f);
+
+            // Puente de dendritas sobre el primer hueco, con tormenta.
+            Storm(27f, 44f);
+            Platform(31f, 2.4f, 1.8f);
+            Platform(38.5f, 4.2f, 6f);
+            Neuron(36f, 1.8f);
+            Neuron(41f, 1.8f);
+
+            // Tramo 2: pelea bajo la tormenta con neuronas en medio.
+            Arena("Tramo_2_Encefalitis", 46f, 22f, "Herpes simple (encefalitis): dispara desde arriba. Antiviral.",
+                W(0.6f, E(prefabs.Herpes, data.Herpes, 2), E(prefabs.Rabia, data.Rabia, 2, SpawnSide.Left)),
+                W(1.0f, E(prefabs.Meningococo, data.Meningococo, 3, SpawnSide.Both), E(prefabs.Poliovirus, data.Poliovirus, 1)));
+            Storm(43f, 68f);
+            Neuron(52f, 1.1f);   // baja: agáchate para disparar por debajo
+            Neuron(57.5f, 3.4f);
+            Neuron(63f, 1.8f);
+            Platform(50f, 2.6f, 2.6f);
+            Platform(55f, 4.4f, 2.6f);
+            Platform(60.5f, 2.6f, 2.6f);
+            Platform(65.5f, 4f, 2.4f);
+
+            // Escalera de tejido nervioso sobre dos huecos.
+            Platform(72f, 2.4f, 1.8f);
+            Platform(77f, 2.4f, 2.4f);
+            Platform(80.5f, 4.2f, 2.4f);
+            Platform(84f, 5.8f, 2.4f);
+            Platform(87.5f, 4.2f, 2.4f);
+            Neuron(80.5f, 1.4f);
+
+            // Tramo 3 (clímax sin jefe): la mayor cantidad de enemigos rodeados de neuronas sanas.
+            Arena("Tramo_3_Corteza", 92f, 24f, "NODO: Última zona antes del hipocampo. Muchos patógenos... y muchas neuronas sanas. Cuida el cerebro.",
+                W(0.6f, E(prefabs.Meningococo, data.Meningococo, 4, SpawnSide.Both)),
+                W(1.0f, E(prefabs.Herpes, data.Herpes, 2), E(prefabs.Rabia, data.Rabia, 2, SpawnSide.Left)),
+                W(1.2f, E(prefabs.Herpes, data.Herpes, 1), E(prefabs.Poliovirus, data.Poliovirus, 3), E(prefabs.Meningococo, data.Meningococo, 2, SpawnSide.Left)));
+            Storm(89f, 113f);
+            Neuron(95f, 1.8f);
+            Neuron(99.5f, 3.6f);
+            Neuron(103.5f, 1.1f);
+            Neuron(107.5f, 3.4f);
+            Neuron(111f, 2f);
+            Platform(97.5f, 2.6f, 2.4f);
+            Platform(102f, 4.4f, 2.6f);
+            Platform(106.5f, 2.6f, 2.4f);
+            Platform(110.5f, 4.4f, 2.4f);
+
+            SetupUtils.SetString(manager, "completeMessage",
+                "NODO: Llegaste al hipocampo con el cerebro a salvo. Fórmula 3 enviada. La infección huyó hacia el corazón...");
+            SetupUtils.SetFloat(manager, "completeDelay", 4.5f);
+        }
+
         /// <summary>
         /// Alvéolo. Con 'breathOffset' (segundos) respira (BreathingPlatform: ciclo de 5.5 s, trampolín a 4 u
         /// cuando está inflado); con un valor negativo es fijo. Reglas: 5.5 u libres arriba, repisa destino

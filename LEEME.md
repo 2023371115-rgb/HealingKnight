@@ -6,6 +6,8 @@
 
 **Siguiente (prototipo listo):** Sistema Respiratorio: Nariz (rinovirus, polen, S. aureus) → Tráquea (tos ferina) → Pulmones (neumonía, influenza y el jefe volador: la **colmena de tuberculosis**; da la fórmula 2 y cierra con el aviso de que la infección va al cerebro). Mecánica del GDD: el paso por los bronquiolos está bloqueado por **mucosidad** (Mucolítico; te frena si la tocas) e **inflamación** (Antiinflamatorio; se contrae al dañarla). El **polen** es un alérgeno: Antihistamínico.
 
+**Prototipo del Sistema Nervioso:** Médula espinal (poliovirus, meningococo, rabia; aprendes las **tormentas eléctricas**: un destello avisa 1 s dónde cae el rayo de 2 u y el escudo no protege) → Cerebro (herpes y los demás entre **neuronas sanas**: si tu cápsula toca una, la **salud del cerebro** baja 5 y no se recupera; si llega a 0, desenlace negativo y se reinicia el nivel. Sin jefe: el clímax es la última zona y la meta es el hipocampo con el cerebro a salvo).
+
 ---
 
 ## Primer uso (5 minutos)
