@@ -19,6 +19,8 @@ namespace HealingKnight.Gameplay.Combat
         [SerializeField] private float radius = 0.25f;
         [SerializeField] private float fuseTime = 1.6f;
         [SerializeField] private float blastDuration = 0.25f;
+        [SerializeField] private float neuroprotectionRadius = 3.5f;
+        [SerializeField] private float neuroprotectionSeconds = 8f;
 
         private Vector2 velocity;
         private float damage;
@@ -114,6 +116,11 @@ namespace HealingKnight.Gameplay.Combat
                 c.a = 0.8f;
                 blastRenderer.color = c;
             }
+
+            // Bomba de anticonvulsivo: además deja un campo neuroprotector (las neuronas sanas no reciben daño).
+            if (medication != null && medication.calmsNeurons)
+                Level.NeuroprotectionField.Create(transform.position, neuroprotectionRadius, neuroprotectionSeconds,
+                    blastRenderer != null ? blastRenderer.sprite : null, medication.color);
 
             Hurtbox.QueryCircle(Team.Enemy, transform.position, blastRadius, hits);
             foreach (Hurtbox h in hits)

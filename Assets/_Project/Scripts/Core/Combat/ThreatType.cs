@@ -9,7 +9,9 @@ namespace HealingKnight.Core.Combat
         Inflamacion,
         Mucosidad,
         /// <summary>Polen y otros alérgenos (nariz). Se tratan con antihistamínico.</summary>
-        Alergeno
+        Alergeno,
+        /// <summary>Neurona hiperexcitada (cerebro): suelta descargas eléctricas. Se calma con anticonvulsivo.</summary>
+        Hiperexcitacion
     }
 
     /// <summary>Resultado de aplicar un medicamento a una amenaza.</summary>

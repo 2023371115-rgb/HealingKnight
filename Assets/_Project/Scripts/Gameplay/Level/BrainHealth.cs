@@ -44,6 +44,14 @@ namespace HealingKnight.Gameplay.Level
             if (Current == this) Current = null;
         }
 
+        /// <summary>Sanar una neurona hiperexcitada devuelve un poco (te perdona un error).</summary>
+        public void Heal(float amount)
+        {
+            if (depleted || amount <= 0f) return;
+            current = Mathf.Min(max, current + amount);
+            Changed?.Invoke(current, max);
+        }
+
         public void Damage(float amount)
         {
             if (depleted || amount <= 0f) return;

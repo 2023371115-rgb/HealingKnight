@@ -12,13 +12,13 @@ namespace HealingKnight.EditorTools
     {
         public const string DataFolder = "Assets/_Project/Data";
 
-        public MedicationData Antibiotico, Antiviral, Antiinflamatorio, Antihistaminico, Antiparasitario, Mucolitico;
+        public MedicationData Antibiotico, Antiviral, Antiinflamatorio, Antihistaminico, Antiparasitario, Mucolitico, Anticonvulsivo;
         public EffectivenessTable Table;
         public PlayerConfig PlayerConfig;
         public EnemyData HPylori, Giardia, Rotavirus, Entamoeba, CDifficile, Oxiuro, SMutans, Lombriz;
         public EnemyData Rinovirus, Polen, SAureus, Pertussis, Neumococo, Influenza, Tuberculosis;
         public EnemyData Mucosidad, Inflamacion, Colmena;
-        public EnemyData Poliovirus, Meningococo, Herpes, Rabia;
+        public EnemyData Poliovirus, Meningococo, Herpes, Rabia, NeuronaHiperexcitada;
         public GameCatalog Catalog;
         public LevelData DigestivoEstomago, DigestivoDelgado, DigestivoGrueso, DigestivoBoca;
         public LevelData RespiratorioNariz, RespiratorioTraquea, RespiratorioPulmones;
@@ -54,6 +54,14 @@ namespace HealingKnight.EditorTools
             Antihistaminico = Med("Antihistaminico", "Antihistamínico", new Color(0.7f, 0.5f, 1f), false, "Efectivo contra alérgenos (polen). Parcial contra parásitos y mucosidad.");
             Antiparasitario = Med("Antiparasitario", "Antiparasitario", new Color(1f, 0.72f, 0.1f), true, "Cápsula regional del Sistema Digestivo. Efectivo contra parásitos.");
             Mucolitico = Med("Mucolitico", "Mucolítico", new Color(0.55f, 1f, 0.6f), true, "Cápsula regional del Sistema Respiratorio. Disuelve la mucosidad.");
+            Anticonvulsivo = Med("Anticonvulsivo", "Anticonvulsivo", new Color(1f, 0.85f, 0.3f), true,
+                "Cápsula regional del Sistema Nervioso (como la fenitoína o el levetiracetam): calma las neuronas hiperexcitadas. " +
+                "No daña neuronas sanas y su bomba deja un campo neuroprotector. Parcial contra bacterias y virus.");
+            if (!Anticonvulsivo.calmsNeurons)
+            {
+                Anticonvulsivo.calmsNeurons = true;
+                UnityEditor.EditorUtility.SetDirty(Anticonvulsivo);
+            }
         }
 
         private void CreateEffectivenessTable()
@@ -83,6 +91,15 @@ namespace HealingKnight.EditorTools
                 t.Set(ThreatType.Alergeno, Antihistaminico, Effectiveness.Effective);
                 t.Set(ThreatType.Alergeno, Antiinflamatorio, Effectiveness.Partial);
             });
+
+            // Anticonvulsivo (regional del nervioso). Columna "Regional" del GDD: parcial contra bacterias y virus.
+            if (Table.Evaluate(ThreatType.Hiperexcitacion, Anticonvulsivo) != Effectiveness.Effective)
+            {
+                Table.Set(ThreatType.Hiperexcitacion, Anticonvulsivo, Effectiveness.Effective);
+                Table.Set(ThreatType.Bacteria, Anticonvulsivo, Effectiveness.Partial);
+                Table.Set(ThreatType.Virus, Anticonvulsivo, Effectiveness.Partial);
+                UnityEditor.EditorUtility.SetDirty(Table);
+            }
 
             // Tablas creadas antes de que existieran los alérgenos: se completan sin tocar lo demás.
             if (Table.Evaluate(ThreatType.Alergeno, Antihistaminico) != Effectiveness.Effective)
@@ -346,6 +363,16 @@ namespace HealingKnight.EditorTools
                 e.visualScale = 1.25f;
             });
 
+            NeuronaHiperexcitada = Enemy("Neurona_Hiperexcitada", e =>
+            {
+                e.displayName = "Neurona hiperexcitada";
+                e.threat = ThreatType.Hiperexcitacion;
+                e.maxHealth = 40f;
+                e.meleeDamageTakenMultiplier = 0f;
+                e.knockbackResistance = 1f; e.hurtStunTime = 0f; e.linfocitoCharge = 0;
+                e.tint = new Color(1f, 0.25f, 0.3f);
+            });
+
             Rabia = Enemy("Virus_Rabia", e =>
             {
                 e.displayName = "Virus de la rabia";
@@ -437,10 +464,15 @@ namespace HealingKnight.EditorTools
             NerviosoCerebro = PlayableLevel("Nervioso", "02_Cerebro", "nervioso_cerebro", "Cerebro", "Nervioso_Cerebro", true,
                 "Elimina la infección sin dañar las neuronas sanas. Llega al hipocampo con el cerebro a salvo. Fórmula 3.");
 
-            SystemData nervioso = MakeSystem("Nervioso", "nervioso", "Sistema Nervioso", "III", null,
+            SystemData nervioso = MakeSystem("Nervioso", "nervioso", "Sistema Nervioso", "III", Anticonvulsivo,
                 new Color(0.7f, 0.5f, 1f), new Vector2(0.5f, 0.9f),
                 "Tormentas eléctricas y tejido sano que hay que proteger.",
                 NerviosoMedula, NerviosoCerebro);
+            if (nervioso.regionalMedication == null)
+            {
+                nervioso.regionalMedication = Anticonvulsivo;
+                UnityEditor.EditorUtility.SetDirty(nervioso);
+            }
 
             SystemData circulatorio = MakeSystem("Circulatorio", "circulatorio", "Sistema Circulatorio", "IV", null,
                 new Color(0.9f, 0.2f, 0.25f), new Vector2(0.45f, 0.65f),

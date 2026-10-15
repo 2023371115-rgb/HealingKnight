@@ -36,6 +36,11 @@ namespace HealingKnight.Gameplay.Level
         {
             if (info.kind != DamageKind.Projectile) return HitResult.Ignored;
 
+            // El anticonvulsivo calma, no daña: la cápsula la atraviesa.
+            if (info.medication != null && info.medication.calmsNeurons) return HitResult.Ignored;
+            // Campo neuroprotector (bomba de anticonvulsivo): inmune un rato.
+            if (NeuroprotectionField.Protects(transform.position)) return HitResult.Ignored;
+
             float amount = info.sourceTeam == Team.Player ? playerShotDamage : enemyShotDamage;
             if (BrainHealth.Current != null) BrainHealth.Current.Damage(amount);
             if (info.sourceTeam == Team.Player)

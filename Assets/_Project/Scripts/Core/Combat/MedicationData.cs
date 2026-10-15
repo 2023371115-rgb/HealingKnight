@@ -25,6 +25,9 @@ namespace HealingKnight.Core.Combat
         [Tooltip("Marca las cápsulas que solo existen en un sistema (p. ej. Antiparasitario en el Digestivo).")]
         public bool isRegional;
 
+        [Tooltip("Anticonvulsivo: no daña a las neuronas sanas (las cápsulas las atraviesan) y su bomba deja un campo neuroprotector.")]
+        public bool calmsNeurons;
+
         [TextArea] public string description;
     }
 }

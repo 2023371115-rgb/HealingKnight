@@ -898,6 +898,12 @@ namespace HealingKnight.EditorTools
             neuron.transform.position = new Vector3(x, FloorY + y, 0f);
         }
 
+        private void RedNeuron(float x, float y)
+        {
+            var neuron = (GameObject)PrefabUtility.InstantiatePrefab(prefabs.RedNeuron.gameObject);
+            neuron.transform.position = new Vector3(x, FloorY + y, 0f);
+        }
+
         private void BuildMedula()
         {
             BuildLevelBase(100f, new LevelStyle
@@ -960,6 +966,7 @@ namespace HealingKnight.EditorTools
 
             // Salud del cerebro (segunda barra del HUD).
             new GameObject("SaludDelCerebro").AddComponent<BrainHealth>();
+            SetMessage("Tu cápsula regional es el ANTICONVULSIVO: atraviesa neuronas sanas sin dañarlas. Su bomba (L/F) las protege 8 s.", 1f);
 
             // Tramo 1
             Arena("Tramo_1_Meningitis", 8f, 20f, "Apunta con cuidado: las neuronas sanas detienen tus cápsulas (−5 de salud del cerebro).",
@@ -970,6 +977,10 @@ namespace HealingKnight.EditorTools
             Platform(11f, 2.4f, 2.4f);
             Platform(17f, 4.2f, 2.4f);
             Platform(22f, 2.4f, 2.4f);
+
+            // Primera neurona hiperexcitada (roja): suelta descargas. Cálmala con Anticonvulsivo.
+            SetMessage("Neurona ROJA hiperexcitada: suelta descargas eléctricas. Cálmala con ANTICONVULSIVO y vuelve a estar sana (+5 cerebro).", 24f);
+            RedNeuron(26.5f, 1.6f);
 
             // Puente de dendritas sobre el primer hueco, con tormenta.
             Storm(27f, 44f);
@@ -986,6 +997,7 @@ namespace HealingKnight.EditorTools
             Neuron(52f, 1.1f);   // baja: agáchate para disparar por debajo
             Neuron(57.5f, 3.4f);
             Neuron(63f, 1.8f);
+            RedNeuron(48.5f, 3.6f);
             Platform(50f, 2.6f, 2.6f);
             Platform(55f, 4.4f, 2.6f);
             Platform(60.5f, 2.6f, 2.6f);
@@ -998,6 +1010,7 @@ namespace HealingKnight.EditorTools
             Platform(84f, 5.8f, 2.4f);
             Platform(87.5f, 4.2f, 2.4f);
             Neuron(80.5f, 1.4f);
+            RedNeuron(76f, 4.4f);
 
             // Tramo 3 (clímax sin jefe): la mayor cantidad de enemigos rodeados de neuronas sanas.
             Arena("Tramo_3_Corteza", 92f, 24f, "NODO: Última zona antes del hipocampo. Muchos patógenos... y muchas neuronas sanas. Cuida el cerebro.",
@@ -1010,6 +1023,8 @@ namespace HealingKnight.EditorTools
             Neuron(103.5f, 1.1f);
             Neuron(107.5f, 3.4f);
             Neuron(111f, 2f);
+            RedNeuron(97.5f, 4.6f);
+            RedNeuron(108.5f, 1.2f);
             Platform(97.5f, 2.6f, 2.4f);
             Platform(102f, 4.4f, 2.6f);
             Platform(106.5f, 2.6f, 2.4f);

@@ -27,6 +27,7 @@ namespace HealingKnight.EditorTools
         public EnemyHealth Mucosidad, Inflamacion, Colmena;
         public EnemyHealth Poliovirus, Meningococo, Herpes, Rabia;
         public HealthyNeuron Neuron;
+        public EnemyHealth RedNeuron;
         public LightningStorm Storm;
         public AcidPool Acid;
         public SecretPassage Secret;
@@ -79,6 +80,7 @@ namespace HealingKnight.EditorTools
             Herpes = Enemy("Virus_Herpes", data.Herpes, EnemyShape.Round);
             Rabia = Enemy("Virus_Rabia", data.Rabia, EnemyShape.Bullet);
             Neuron = LoadOrBuild<HealthyNeuron>($"{Folder}/Level/Neurona_Sana.prefab", BuildNeuron);
+            RedNeuron = LoadOrBuild<EnemyHealth>($"{Folder}/Level/Neurona_Hiperexcitada.prefab", BuildRedNeuron);
             Storm = LoadOrBuild<LightningStorm>($"{Folder}/Hazards/Tormenta_Electrica.prefab", BuildStorm);
 
             Colmena = LoadOrBuild<EnemyHealth>($"{Folder}/Bosses/Colmena_Pulmones.prefab", BuildHive);
@@ -431,6 +433,45 @@ namespace HealingKnight.EditorTools
             SetupUtils.SetRefArray(neuron, "renderers", parts.ToArray());
             var hurtbox = root.AddComponent<Hurtbox>();
             SetHurtbox(hurtbox, Vector2.zero, new Vector2(0.9f, 0.9f));
+            return root;
+        }
+
+        /// <summary>Neurona hiperexcitada (roja): suelta descargas; se sana con anticonvulsivo y se vuelve sana.</summary>
+        private GameObject BuildRedNeuron()
+        {
+            var root = new GameObject("Neurona_Hiperexcitada");
+            root.layer = PhysicsLayers.Enemy;
+            root.AddComponent<SortingGroup>().sortingOrder = 2;
+            var parts = new System.Collections.Generic.List<Object>();
+
+            var ring = SetupUtils.SpriteChild(root.transform, "Descarga", PlaceholderArt.Circle, new Color(1f, 0.5f, 0.9f, 0.3f),
+                Vector3.zero, new Vector2(1f, 1f), -3);
+            parts.Add(SetupUtils.SpriteChild(root.transform, "Halo", PlaceholderArt.Circle, new Color(1f, 0.2f, 0.25f, 0.3f),
+                Vector3.zero, new Vector2(2.2f, 2.2f), -2));
+            for (int i = 0; i < 7; i++)
+            {
+                float a = (i * 51f + 10f) * Mathf.Deg2Rad;
+                float len = 0.8f + (i % 3) * 0.35f;
+                var dendrite = SetupUtils.SpriteChild(root.transform, "Dendrita" + i, PlaceholderArt.Capsule, new Color(1f, 0.3f, 0.35f, 0.95f),
+                    new Vector3(Mathf.Cos(a) * len * 0.5f, Mathf.Sin(a) * len * 0.5f, 0f), new Vector2(len, 0.13f), -1);
+                dendrite.transform.localRotation = Quaternion.Euler(0f, 0f, i * 51f + 10f);
+                parts.Add(dendrite);
+            }
+            parts.Add(SetupUtils.SpriteChild(root.transform, "Soma", PlaceholderArt.Circle, new Color(1f, 0.25f, 0.3f), Vector3.zero, new Vector2(0.8f, 0.8f), 0));
+            var core = SetupUtils.SpriteChild(root.transform, "Nucleo", PlaceholderArt.Circle, new Color(1f, 0.85f, 0.6f), Vector3.zero, new Vector2(0.32f, 0.32f), 1);
+
+            var health = root.AddComponent<EnemyHealth>();
+            SetupUtils.SetRef(health, "data", data.NeuronaHiperexcitada);
+            SetupUtils.SetRef(health, "effectivenessTable", data.Table);
+            SetupUtils.SetRefArray(health, "flashRenderers", parts.ToArray());
+
+            var hurtbox = root.AddComponent<Hurtbox>();
+            SetHurtbox(hurtbox, Vector2.zero, new Vector2(1f, 1f));
+
+            var neuron = root.AddComponent<HyperexcitedNeuron>();
+            SetupUtils.SetRef(neuron, "healedPrefab", Neuron);
+            SetupUtils.SetRef(neuron, "ring", ring);
+            SetupUtils.SetRef(neuron, "core", core);
             return root;
         }
 
