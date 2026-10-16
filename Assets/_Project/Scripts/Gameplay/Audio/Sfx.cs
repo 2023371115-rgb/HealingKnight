@@ -1,0 +1,98 @@
+using System.Collections.Generic;
+using HealingKnight.Core.Combat;
+using UnityEngine;
+using UnityEngine.SceneManagement;
+
+namespace HealingKnight.Gameplay.Audio
+{
+    /// <summary>
+    /// Reproductor de efectos de sonido sencillo: un grupo de AudioSources que se reparten los sonidos,
+    /// con variación de tono al azar y un límite para que el mismo sonido no se apile en el mismo instante.
+    /// Uso: Sfx.Play(clip, volumen);
+    ///
+    /// Si un medicamento no tiene su sonido asignado, se busca solo en Audio/Resources/SFX
+    /// por nombre (Disparo_&lt;archivo del medicamento&gt;, Impacto_..., Rebote_Ineficaz), así suena sin regenerar nada.
+    /// Si la escena no tiene AudioListener, se pone uno de respaldo (sin oyente Unity no reproduce nada).
+    /// </summary>
+    public static class Sfx
+    {
+        private const int Voices = 12;
+        private const float SameClipGap = 0.035f;
+
+        private static AudioSource[] sources;
+        private static int next;
+        private static readonly Dictionary<AudioClip, float> lastPlayed = new Dictionary<AudioClip, float>();
+        private static readonly Dictionary<string, AudioClip> byName = new Dictionary<string, AudioClip>();
+        private static AudioListener backupListener;
+
+        public const string ResourcesFolder = "SFX";
+
+        /// <summary>Carga un sonido de Audio/Resources/SFX por nombre (sin extensión). Devuelve null si no existe.</summary>
+        public static AudioClip Load(string clipName)
+        {
+            if (string.IsNullOrEmpty(clipName)) return null;
+            if (!byName.TryGetValue(clipName, out AudioClip clip))
+            {
+                clip = Resources.Load<AudioClip>($"{ResourcesFolder}/{clipName}");
+                byName[clipName] = clip;
+            }
+            return clip;
+        }
+
+        public static AudioClip FireSound(MedicationData med) =>
+            med == null ? null : med.fireSound != null ? med.fireSound : Load("Disparo_" + med.name);
+
+        public static AudioClip HitSound(MedicationData med) =>
+            med == null ? null : med.hitSound != null ? med.hitSound : Load("Impacto_" + med.name);
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetStatics()
+        {
+            sources = null;
+            next = 0;
+            lastPlayed.Clear();
+            byName.Clear();
+            backupListener = null;
+        }
+
+        public static void Play(AudioClip clip, float volume = 1f, float pitchJitter = 0.06f)
+        {
+            if (clip == null) return;
+            if (lastPlayed.TryGetValue(clip, out float t) && Time.unscaledTime - t < SameClipGap) return;
+            lastPlayed[clip] = Time.unscaledTime;
+
+            EnsureSources();
+            AudioSource s = sources[next];
+            next = (next + 1) % sources.Length;
+            s.pitch = 1f + Random.Range(-pitchJitter, pitchJitter);
+            s.PlayOneShot(clip, volume);
+        }
+
+        private static void EnsureSources()
+        {
+            if (sources != null && sources[0] != null) return;
+            var go = new GameObject("Sfx");
+            Object.DontDestroyOnLoad(go);
+            sources = new AudioSource[Voices];
+            for (int i = 0; i < Voices; i++)
+            {
+                AudioSource s = go.AddComponent<AudioSource>();
+                s.playOnAwake = false;
+                s.spatialBlend = 0f; // 2D
+            }
+            SceneManager.sceneLoaded += (_, __) => EnsureListener();
+            EnsureListener();
+        }
+
+        private static void EnsureListener()
+        {
+            if (sources == null || sources[0] == null) return;
+            if (backupListener == null) backupListener = sources[0].gameObject.AddComponent<AudioListener>();
+            // El de respaldo solo se prende si no hay otro (dos oyentes a la vez dan advertencia).
+            bool other = false;
+            foreach (AudioListener l in Object.FindObjectsByType<AudioListener>(FindObjectsSortMode.None))
+                if (l != backupListener && l.isActiveAndEnabled) { other = true; break; }
+            backupListener.enabled = !other;
+        }
+    }
+}
