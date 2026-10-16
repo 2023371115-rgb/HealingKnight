@@ -61,33 +61,58 @@ namespace HealingKnight.Gameplay.Audio
             if (lastPlayed.TryGetValue(clip, out float t) && Time.unscaledTime - t < SameClipGap) return;
             lastPlayed[clip] = Time.unscaledTime;
 
-            EnsureSources();
-            AudioSource s = sources[next];
-            next = (next + 1) % sources.Length;
+            AudioSource s = NextSource();
+            if (s == null) return;
             s.pitch = 1f + Random.Range(-pitchJitter, pitchJitter);
             s.PlayOneShot(clip, volume);
         }
 
-        private static void EnsureSources()
+        /// <summary>
+        /// Siguiente bocina libre. Si alguna se borró (al salir de Play con la recarga de scripts desactivada,
+        /// al cambiar de escena, etc.) se vuelven a crear todas, así nunca truena.
+        /// </summary>
+        private static AudioSource NextSource()
         {
-            if (sources != null && sources[0] != null) return;
-            var go = new GameObject("Sfx");
-            Object.DontDestroyOnLoad(go);
+            if (!SourcesAlive()) CreateSources();
+            AudioSource s = sources[next];
+            next = (next + 1) % sources.Length;
+            return s;
+        }
+
+        private static bool SourcesAlive()
+        {
+            if (sources == null) return false;
+            foreach (AudioSource s in sources)
+                if (s == null) return false;
+            return true;
+        }
+
+        private static void CreateSources()
+        {
+            var root = new GameObject("Sfx");
+            Object.DontDestroyOnLoad(root);
             sources = new AudioSource[Voices];
+            next = 0;
             for (int i = 0; i < Voices; i++)
             {
-                AudioSource s = go.AddComponent<AudioSource>();
+                var voice = new GameObject($"Voz {i}");
+                voice.transform.SetParent(root.transform, false);
+                AudioSource s = voice.AddComponent<AudioSource>();
                 s.playOnAwake = false;
                 s.spatialBlend = 0f; // 2D
+                sources[i] = s;
             }
-            SceneManager.sceneLoaded += (_, __) => EnsureListener();
+            backupListener = root.AddComponent<AudioListener>();
+            SceneManager.sceneLoaded -= OnSceneLoaded;
+            SceneManager.sceneLoaded += OnSceneLoaded;
             EnsureListener();
         }
 
+        private static void OnSceneLoaded(Scene scene, LoadSceneMode mode) => EnsureListener();
+
         private static void EnsureListener()
         {
-            if (sources == null || sources[0] == null) return;
-            if (backupListener == null) backupListener = sources[0].gameObject.AddComponent<AudioListener>();
+            if (backupListener == null) return;
             // El de respaldo solo se prende si no hay otro (dos oyentes a la vez dan advertencia).
             bool other = false;
             foreach (AudioListener l in Object.FindObjectsByType<AudioListener>(FindObjectsSortMode.None))
