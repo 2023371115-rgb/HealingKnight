@@ -27,6 +27,7 @@ namespace HealingKnight.EditorTools
         public void Run()
         {
             CreateMedications();
+            CreateAudio();
             CreateEffectivenessTable();
             CreatePlayerConfig();
             CreateEnemies();
@@ -62,6 +63,48 @@ namespace HealingKnight.EditorTools
                 Anticonvulsivo.calmsNeurons = true;
                 UnityEditor.EditorUtility.SetDirty(Anticonvulsivo);
             }
+        }
+
+        public const string SfxFolder = "Assets/_Project/Audio/SFX";
+
+        /// <summary>
+        /// Sonidos de prueba (sintetizados, de ciencia ficción): uno de disparo y uno de impacto por medicamento,
+        /// más el rebote general. Solo se asignan si el medicamento aún no tiene sonido (no pisa los tuyos).
+        /// </summary>
+        private void CreateAudio()
+        {
+            AssignSounds(Antibiotico, "Antibiotico");
+            AssignSounds(Antiviral, "Antiviral");
+            AssignSounds(Antiinflamatorio, "Antiinflamatorio");
+            AssignSounds(Antihistaminico, "Antihistaminico");
+            AssignSounds(Antiparasitario, "Antiparasitario");
+            AssignSounds(Mucolitico, "Mucolitico");
+            AssignSounds(Anticonvulsivo, "Anticonvulsivo");
+
+            var audio = SetupUtils.LoadOrCreate<HealingKnight.Gameplay.Audio.CombatAudio>(
+                $"{DataFolder}/Resources/{HealingKnight.Gameplay.Audio.CombatAudio.ResourcePath}.asset", a => { });
+            if (audio.resistSound == null)
+            {
+                audio.resistSound = UnityEditor.AssetDatabase.LoadAssetAtPath<AudioClip>($"{SfxFolder}/Rebote_Ineficaz.ogg");
+                UnityEditor.EditorUtility.SetDirty(audio);
+            }
+        }
+
+        private static void AssignSounds(MedicationData med, string name)
+        {
+            if (med == null) return;
+            bool changed = false;
+            if (med.fireSound == null)
+            {
+                med.fireSound = UnityEditor.AssetDatabase.LoadAssetAtPath<AudioClip>($"{SfxFolder}/Disparo_{name}.ogg");
+                changed |= med.fireSound != null;
+            }
+            if (med.hitSound == null)
+            {
+                med.hitSound = UnityEditor.AssetDatabase.LoadAssetAtPath<AudioClip>($"{SfxFolder}/Impacto_{name}.ogg");
+                changed |= med.hitSound != null;
+            }
+            if (changed) UnityEditor.EditorUtility.SetDirty(med);
         }
 
         private void CreateEffectivenessTable()

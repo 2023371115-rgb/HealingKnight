@@ -49,6 +49,22 @@ namespace HealingKnight.Gameplay.Combat
         /// <summary>De quién es el disparo (para cargar las bombas solo con disparos del jugador).</summary>
         public Team SourceTeam => shot.sourceTeam;
 
+        /// <summary>Sonido del impacto de las cápsulas del jugador: el del medicamento o el rebote si fue ineficaz.</summary>
+        private void PlayHitSound(HitResult result)
+        {
+            if (shot.sourceTeam != Team.Player || result.outcome == HitOutcome.Ignored) return;
+            Audio.CombatAudio sounds = Audio.CombatAudio.Instance;
+            float jitter = sounds != null ? sounds.pitchJitter : 0.06f;
+            if (result.outcome == HitOutcome.Resisted)
+            {
+                if (sounds != null) Audio.Sfx.Play(sounds.resistSound, sounds.resistVolume, jitter);
+            }
+            else if (shot.medication != null)
+            {
+                Audio.Sfx.Play(shot.medication.hitSound, sounds != null ? sounds.hitVolume : 0.6f, jitter);
+            }
+        }
+
         public void Launch(ProjectileShot data, Action<Projectile> finishedCallback)
         {
             shot = data;
@@ -107,6 +123,7 @@ namespace HealingKnight.Gameplay.Combat
 
                 HitResult result = target.Damageable.ApplyDamage(info);
                 AnyHit?.Invoke(this, result);
+                PlayHitSound(result);
 
                 if (result.outcome == HitOutcome.Resisted) StartBounce();
                 else if (result.outcome != HitOutcome.Ignored) Finish();

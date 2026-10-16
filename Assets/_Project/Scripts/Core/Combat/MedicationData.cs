@@ -29,5 +29,11 @@ namespace HealingKnight.Core.Combat
         public bool calmsNeurons;
 
         [TextArea] public string description;
+
+        [Header("Sonido")]
+        [Tooltip("Al disparar esta cápsula (corto, menos de 0.2 s).")]
+        public AudioClip fireSound;
+        [Tooltip("Cuando la cápsula hace daño (efectiva o parcial). Si es ineficaz suena el rebote general.")]
+        public AudioClip hitSound;
     }
 }

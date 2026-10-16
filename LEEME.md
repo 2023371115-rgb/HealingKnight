@@ -47,6 +47,10 @@ Los controles se definen en `Scripts/Gameplay/Player/PlayerInputReader.cs`.
 
 ---
 
+## Sonido (experimento)
+
+Cada medicamento tiene su sonido de **disparo** y de **impacto** (campos `fireSound` y `hitSound` de su MedicationData); si la cápsula es ineficaz suena el **rebote** general (`Data/Resources/CombatAudio`, donde también están los volúmenes). Los sonidos de `Audio/SFX` son de prueba, sintetizados: para cambiar uno, arrastra tu archivo al campo del medicamento. Usa sonidos cortos (menos de 0.2 s), en mono y en `.ogg` (los `.wav` van por Git LFS).
+
 ## Estructura de carpetas
 
 ```

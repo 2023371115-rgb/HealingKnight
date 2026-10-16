@@ -5,6 +5,7 @@ using HealingKnight.Core.Combat2D;
 using HealingKnight.Core.Damage;
 using HealingKnight.Core.Flow;
 using HealingKnight.Core.Pooling;
+using HealingKnight.Gameplay.Audio;
 using HealingKnight.Gameplay.Combat;
 using HealingKnight.Gameplay.Movement;
 using UnityEngine;
@@ -209,6 +210,8 @@ namespace HealingKnight.Gameplay.Player
             }, p => pool.Release(p));
 
             fireCooldown = c.fireInterval;
+            CombatAudio sounds = CombatAudio.Instance;
+            Sfx.Play(Current.fireSound, sounds != null ? sounds.fireVolume : 0.45f, sounds != null ? sounds.pitchJitter : 0.06f);
             Fired?.Invoke();
             return true;
         }
