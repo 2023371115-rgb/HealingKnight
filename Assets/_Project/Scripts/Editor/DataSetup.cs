@@ -65,7 +65,7 @@ namespace HealingKnight.EditorTools
             }
         }
 
-        public const string SfxFolder = "Assets/_Project/Audio/SFX";
+        public const string SfxFolder = "Assets/_Project/Audio/Resources/SFX";
 
         /// <summary>
         /// Sonidos de prueba (sintetizados, de ciencia ficción): uno de disparo y uno de impacto por medicamento,

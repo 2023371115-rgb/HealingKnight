@@ -57,11 +57,12 @@ namespace HealingKnight.Gameplay.Combat
             float jitter = sounds != null ? sounds.pitchJitter : 0.06f;
             if (result.outcome == HitOutcome.Resisted)
             {
-                if (sounds != null) Audio.Sfx.Play(sounds.resistSound, sounds.resistVolume, jitter);
+                AudioClip resist = sounds != null && sounds.resistSound != null ? sounds.resistSound : Audio.Sfx.Load("Rebote_Ineficaz");
+                Audio.Sfx.Play(resist, sounds != null ? sounds.resistVolume : 0.55f, jitter);
             }
             else if (shot.medication != null)
             {
-                Audio.Sfx.Play(shot.medication.hitSound, sounds != null ? sounds.hitVolume : 0.6f, jitter);
+                Audio.Sfx.Play(Audio.Sfx.HitSound(shot.medication), sounds != null ? sounds.hitVolume : 0.6f, jitter);
             }
         }
 

@@ -211,7 +211,7 @@ namespace HealingKnight.Gameplay.Player
 
             fireCooldown = c.fireInterval;
             CombatAudio sounds = CombatAudio.Instance;
-            Sfx.Play(Current.fireSound, sounds != null ? sounds.fireVolume : 0.45f, sounds != null ? sounds.pitchJitter : 0.06f);
+            Sfx.Play(Sfx.FireSound(Current), sounds != null ? sounds.fireVolume : 0.45f, sounds != null ? sounds.pitchJitter : 0.06f);
             Fired?.Invoke();
             return true;
         }

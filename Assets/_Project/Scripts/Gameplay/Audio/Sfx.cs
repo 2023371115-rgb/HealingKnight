@@ -1,5 +1,7 @@
 using System.Collections.Generic;
+using HealingKnight.Core.Combat;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace HealingKnight.Gameplay.Audio
 {
@@ -7,6 +9,10 @@ namespace HealingKnight.Gameplay.Audio
     /// Reproductor de efectos de sonido sencillo: un grupo de AudioSources que se reparten los sonidos,
     /// con variación de tono al azar y un límite para que el mismo sonido no se apile en el mismo instante.
     /// Uso: Sfx.Play(clip, volumen);
+    ///
+    /// Si un medicamento no tiene su sonido asignado, se busca solo en Audio/Resources/SFX
+    /// por nombre (Disparo_&lt;archivo del medicamento&gt;, Impacto_..., Rebote_Ineficaz), así suena sin regenerar nada.
+    /// Si la escena no tiene AudioListener, se pone uno de respaldo (sin oyente Unity no reproduce nada).
     /// </summary>
     public static class Sfx
     {
@@ -16,6 +22,28 @@ namespace HealingKnight.Gameplay.Audio
         private static AudioSource[] sources;
         private static int next;
         private static readonly Dictionary<AudioClip, float> lastPlayed = new Dictionary<AudioClip, float>();
+        private static readonly Dictionary<string, AudioClip> byName = new Dictionary<string, AudioClip>();
+        private static AudioListener backupListener;
+
+        public const string ResourcesFolder = "SFX";
+
+        /// <summary>Carga un sonido de Audio/Resources/SFX por nombre (sin extensión). Devuelve null si no existe.</summary>
+        public static AudioClip Load(string clipName)
+        {
+            if (string.IsNullOrEmpty(clipName)) return null;
+            if (!byName.TryGetValue(clipName, out AudioClip clip))
+            {
+                clip = Resources.Load<AudioClip>($"{ResourcesFolder}/{clipName}");
+                byName[clipName] = clip;
+            }
+            return clip;
+        }
+
+        public static AudioClip FireSound(MedicationData med) =>
+            med == null ? null : med.fireSound != null ? med.fireSound : Load("Disparo_" + med.name);
+
+        public static AudioClip HitSound(MedicationData med) =>
+            med == null ? null : med.hitSound != null ? med.hitSound : Load("Impacto_" + med.name);
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetStatics()
@@ -23,6 +51,8 @@ namespace HealingKnight.Gameplay.Audio
             sources = null;
             next = 0;
             lastPlayed.Clear();
+            byName.Clear();
+            backupListener = null;
         }
 
         public static void Play(AudioClip clip, float volume = 1f, float pitchJitter = 0.06f)
@@ -50,6 +80,19 @@ namespace HealingKnight.Gameplay.Audio
                 s.playOnAwake = false;
                 s.spatialBlend = 0f; // 2D
             }
+            SceneManager.sceneLoaded += (_, __) => EnsureListener();
+            EnsureListener();
+        }
+
+        private static void EnsureListener()
+        {
+            if (sources == null || sources[0] == null) return;
+            if (backupListener == null) backupListener = sources[0].gameObject.AddComponent<AudioListener>();
+            // El de respaldo solo se prende si no hay otro (dos oyentes a la vez dan advertencia).
+            bool other = false;
+            foreach (AudioListener l in Object.FindObjectsByType<AudioListener>(FindObjectsSortMode.None))
+                if (l != backupListener && l.isActiveAndEnabled) { other = true; break; }
+            backupListener.enabled = !other;
         }
     }
 }

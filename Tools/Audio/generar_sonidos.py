@@ -15,7 +15,7 @@ Cómo funciona (la "receta" de cada sonido):
   5. Extras: vibrato (tiembla), pulsos (burbujea), chispas (crujido eléctrico).
 
 Uso (necesitas Python con numpy; y ffmpeg si quieres .ogg):
-  python generar_sonidos.py                 -> genera TODOS en Assets/_Project/Audio/SFX
+  python generar_sonidos.py                 -> genera TODOS en Assets/_Project/Audio/Resources/SFX
   python generar_sonidos.py Disparo_Rabia   -> genera solo ese
 
 Para agregar uno nuevo: copia una entrada de SONIDOS, cámbiale el nombre y los números,
@@ -26,7 +26,7 @@ import numpy as np
 
 SR = 44100
 AQUI = os.path.dirname(os.path.abspath(__file__))
-SALIDA = os.path.normpath(os.path.join(AQUI, "..", "..", "Assets", "_Project", "Audio", "SFX"))
+SALIDA = os.path.normpath(os.path.join(AQUI, "..", "..", "Assets", "_Project", "Audio", "Resources", "SFX"))
 
 # --------------------------------------------------------------------------------------------
 # Lista de sonidos. Cada capa ("capas") se suma; luego se aplica la envolvente.
