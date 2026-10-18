@@ -1,3 +1,4 @@
+using HealingKnight.Gameplay.Audio;
 using System;
 using System.Collections.Generic;
 using HealingKnight.Core.Combat;
@@ -108,6 +109,7 @@ namespace HealingKnight.Gameplay.Combat
         private void Explode()
         {
             blastTimer = 0f;
+            Sfx.EffectAt("Bomba_Explota", transform.position);
             if (spriteRenderer != null) spriteRenderer.enabled = false;
             if (blastRenderer != null)
             {

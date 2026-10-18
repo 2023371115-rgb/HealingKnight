@@ -1,3 +1,4 @@
+using HealingKnight.Gameplay.Audio;
 using HealingKnight.Gameplay.Player;
 using UnityEngine;
 
@@ -43,7 +44,7 @@ namespace HealingKnight.Gameplay.Level
         private Vector3 basePosition;
         private Vector3 visualBaseScale = Vector3.one;
         private float time;
-
+        private int lastStage = -1;
 
         public bool IsInflated { get; private set; }
         private float Period => inflateTime + inflatedTime + deflateTime + deflatedTime;
@@ -62,6 +63,7 @@ namespace HealingKnight.Gameplay.Level
             time = (time + Time.deltaTime) % Period;
             float k = InflationAt(time, out bool inflated);
             IsInflated = inflated;
+            PlayStageSound();
 
             transform.position = basePosition + new Vector3(0f, inflatedRise * k, 0f);
             if (visual != null)
@@ -97,7 +99,24 @@ namespace HealingKnight.Gameplay.Level
                          && player.Motor.Velocity.y <= 0.1f;
 
             // Trampolín: mientras esté inflado, todo el que esté encima sale disparado (una y otra vez).
-            if (onTop && IsInflated) player.Bounce(BounceHeight, BounceVelocity);
+            if (onTop && IsInflated)
+            {
+                player.Bounce(BounceHeight, BounceVelocity);
+                Sfx.Effect("Alveolo_Rebote");
+            }
+        }
+
+        /// <summary>Al empezar a inflarse "inhala" y al empezar a desinflarse "exhala" (bajito y solo si se ve).</summary>
+        private void PlayStageSound()
+        {
+            int stage = time < inflateTime ? 0 : time < inflateTime + inflatedTime ? 1 : time < Period - deflatedTime ? 2 : 3;
+            if (stage == lastStage) return;
+            if (lastStage >= 0)
+            {
+                if (stage == 0) Sfx.EffectAt("Alveolo_Infla", transform.position, 0.5f);
+                else if (stage == 2) Sfx.EffectAt("Alveolo_Desinfla", transform.position, 0.5f);
+            }
+            lastStage = stage;
         }
 
         private static float Smooth(float x) => x * x * (3f - 2f * x);

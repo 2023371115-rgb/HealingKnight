@@ -1,3 +1,4 @@
+using HealingKnight.Gameplay.Audio;
 using System.Collections.Generic;
 using HealingKnight.Core.Damage;
 using HealingKnight.Core.Pooling;
@@ -248,6 +249,7 @@ namespace HealingKnight.Gameplay.Enemies
         private void OnReversal(PlayerController player)
         {
             reversals++;
+            if (player != null) Sfx.Effect("Rabia_Chillido", 0.6f);
             if (storm == null || player == null || !player.Health.IsAlive) return;
             bool strike = Phase >= 2 || reversals % 2 == 0;
             if (strike) storm.ForceStrike(player.Position.x + Random.Range(-1f, 1f));
@@ -314,6 +316,7 @@ namespace HealingKnight.Gameplay.Enemies
         {
             if (pool == null) return;
             Vector2 dir = ((player.Position + Vector2.up * 0.9f) - origin).normalized;
+            Sfx.PlayAt(Sfx.EnemySound(health.Data, "Disparo"), origin, CombatAudio.Enemies);
             Projectile p = pool.Get();
             p.Launch(new ProjectileShot
             {

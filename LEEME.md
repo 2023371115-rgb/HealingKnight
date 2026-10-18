@@ -49,7 +49,30 @@ Los controles se definen en `Scripts/Gameplay/Player/PlayerInputReader.cs`.
 
 ## Sonido (experimento)
 
-Cada medicamento tiene su sonido de **disparo** y de **impacto** (campos `fireSound` y `hitSound` de su MedicationData); si la cápsula es ineficaz suena el **rebote** general (`Data/Resources/CombatAudio`, donde también están los volúmenes). Los sonidos de `Audio/Resources/SFX` son de prueba, sintetizados: para cambiar uno, arrastra tu archivo al campo del medicamento. Si el campo está vacío, el juego busca solo en esa carpeta `Disparo_<medicamento>`, `Impacto_<medicamento>` y `Rebote_Ineficaz` (con el nombre del archivo del medicamento, p. ej. `Disparo_Antibiotico`), así que basta con reemplazar el archivo con el mismo nombre. Usa sonidos cortos (menos de 0.2 s), en mono y en `.ogg` (los `.wav` van por Git LFS).
+Todos los sonidos viven en `Assets/_Project/Audio/Resources/SFX` y el juego los busca **por nombre de archivo**: para cambiar uno, reemplaza el archivo con el mismo nombre (`.ogg` de preferencia; los `.wav` van por Git LFS). No hay que tocar código ni regenerar. Los actuales son de prueba, sintetizados con `Tools/Audio/generar_sonidos.py` (ahí está explicado cómo hacer más). Los volúmenes por grupo están en `Data/Resources/CombatAudio`.
+
+| Archivo | Cuándo suena |
+|---|---|
+| `Disparo_<Medicamento>` / `Impacto_<Medicamento>` | Disparar / pegarle a algo (también se pueden arrastrar al campo del MedicationData) |
+| `Rebote_Ineficaz` | Cápsula ineficaz que rebota en gris |
+| `Jugador_Salto`, `Jugador_SaltoDoble`, `Jugador_Herido`, `Jugador_Muere` | Jugador |
+| `Escudo_Bloquea`, `Escudo_Parry`, `Escudo_Rompe` | Escudo |
+| `Bomba_Lanza`, `Bomba_Explota`, `Bomba_Ganada` | Bombas (ganada = se llenó la barra peleando) |
+| `<archivo del enemigo>_Disparo` / `_Muere` | Un enemigo en particular, p. ej. `Virus_Rinovirus_Muere` |
+| `<tipo>_Disparo` / `_Muere` | Todo un tipo si el enemigo no tiene el suyo: `Virus_`, `Bacteria_`, `Parasito_`, `Bloqueo_`, `Jefe_`... |
+| `Enemigo_Disparo` / `Enemigo_Muere` | Lo que no tenga ninguno de los dos anteriores |
+| `Neurona_Hiperexcitada_Muere` | Calmar una neurona roja (vuelve a ser sana) |
+| `Acido_Burbujeo` (bucle), `Acido_Quema` | Charco de ácido: burbujea cerca, chisporrotea al quemarte |
+| `Lombriz_Retumbo`, `Lombriz_Sale`, `Lombriz_Entra`, `Lombriz_Ruge` | Aviso bajo tierra, salir, meterse, quedar expuesta / huir |
+| `Alveolo_Infla`, `Alveolo_Desinfla`, `Alveolo_Rebote` | Alvéolos de los pulmones (inhala, exhala, trampolín) |
+| `Colmena_Enjambre` | La colmena suelta su enjambre (su disparo es `Jefe_Colmena_Disparo` o `Jefe_Disparo`) |
+| `Rayo_Aviso`, `Rayo_Cae` | Tormenta: el segundo de aviso y el rayo |
+| `Neurona_Carga`, `Neurona_Descarga`, `Neurona_Golpe`, `Neurona_Infecta` | Neuronas: carga y descarga de la roja, golpe e infección de la sana |
+| `Campo_Neuroprotector` | Bomba de anticonvulsivo |
+| `Rabia_Chillido` | La cadena de rabia da la vuelta |
+| `Ambiente_<Sistema>` (bucle) | Fondo de cada sistema según el nombre de la escena (`Ambiente_Digestivo`, `_Respiratorio`, `_Nervioso`). `Ambiente_<Escena>` (p. ej. `Ambiente_Nervioso_Hipocampo`) le gana para un nivel en particular |
+
+Los sonidos que pasan fuera de la pantalla se oyen más bajo y, si están muy lejos, no suenan. Disparos e impactos: cortos (menos de 0.2 s) y en mono.
 
 ## Estructura de carpetas
 

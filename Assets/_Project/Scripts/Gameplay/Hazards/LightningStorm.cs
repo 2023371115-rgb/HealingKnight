@@ -1,3 +1,4 @@
+using HealingKnight.Gameplay.Audio;
 using HealingKnight.Core.Damage;
 using HealingKnight.Gameplay.Combat;
 using HealingKnight.Gameplay.Player;
@@ -56,10 +57,7 @@ namespace HealingKnight.Gameplay.Hazards
         {
             if (state != State.Waiting) return false;
             strikeX = Mathf.Clamp(x, minX + width * 0.5f, maxX - width * 0.5f);
-            state = State.Warning;
-            timer = warningTime;
-            Place();
-            Show(true, false);
+            BeginWarning();
             return true;
         }
 
@@ -81,10 +79,7 @@ namespace HealingKnight.Gameplay.Hazards
                     if (AutoStrikes && timer <= 0f && playerInside)
                     {
                         strikeX = Mathf.Clamp(player.Position.x + Random.Range(-aimJitter, aimJitter), minX + width * 0.5f, maxX - width * 0.5f);
-                        state = State.Warning;
-                        timer = warningTime;
-                        Place();
-                        Show(true, false);
+                        BeginWarning();
                     }
                     break;
 
@@ -103,6 +98,7 @@ namespace HealingKnight.Gameplay.Hazards
                         timer = strikeTime;
                         hitThisStrike = false;
                         Show(false, true);
+                        Sfx.EffectAt("Rayo_Cae", new Vector2(strikeX, floorY + 2f));
                     }
                     break;
 
@@ -117,6 +113,15 @@ namespace HealingKnight.Gameplay.Hazards
                     }
                     break;
             }
+        }
+
+        private void BeginWarning()
+        {
+            state = State.Warning;
+            timer = warningTime;
+            Place();
+            Show(true, false);
+            Sfx.EffectAt("Rayo_Aviso", new Vector2(strikeX, floorY + 2f));
         }
 
         private void TryHit(PlayerController player)

@@ -1,3 +1,4 @@
+using HealingKnight.Gameplay.Audio;
 using HealingKnight.Core.Damage;
 using HealingKnight.Gameplay.Combat;
 using HealingKnight.Gameplay.Enemies;
@@ -33,6 +34,7 @@ namespace HealingKnight.Gameplay.Level
         private float timer;
         private float flash;
         private Color coreColor = Color.white;
+        private bool warned;
 
         private void Awake()
         {
@@ -55,6 +57,11 @@ namespace HealingKnight.Gameplay.Level
             {
                 // Aviso: el anillo crece hasta el radio de la descarga y el núcleo parpadea.
                 float k = 1f - Mathf.Clamp01(timer / warningTime);
+                if (!warned)
+                {
+                    warned = true;
+                    Sfx.EffectAt("Neurona_Carga", transform.position, 0.7f);
+                }
                 ring.enabled = true;
                 ring.transform.localScale = Vector3.one * radius * 2f * Mathf.Lerp(0.3f, 1f, k);
                 Color c = ring.color;
@@ -65,6 +72,8 @@ namespace HealingKnight.Gameplay.Level
 
             if (timer <= 0f)
             {
+                warned = false;
+                Sfx.EffectAt("Neurona_Descarga", transform.position);
                 Discharge();
                 timer = interval;
                 if (ring != null) ring.enabled = false;

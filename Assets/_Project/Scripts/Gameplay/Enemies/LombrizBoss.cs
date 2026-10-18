@@ -1,3 +1,4 @@
+using HealingKnight.Gameplay.Audio;
 using System.Collections.Generic;
 using HealingKnight.Core.Damage;
 using HealingKnight.Gameplay.Combat;
@@ -239,6 +240,7 @@ namespace HealingKnight.Gameplay.Enemies
             trail.Clear();
 
             state = State.Telegraph;
+            Sfx.EffectAt("Lombriz_Retumbo", new Vector2(startX, transform.position.y));
             timer = telegraphTime / Mathf.Lerp(1f, SpeedMultiplier, 0.5f);
         }
 
@@ -246,6 +248,7 @@ namespace HealingKnight.Gameplay.Enemies
         {
             UpdateMound(false);
             state = State.Moving;
+            Sfx.EffectAt("Lombriz_Sale", new Vector2(startX, transform.position.y));
             progress = 0f;
             hitThisAttack = false;
         }
@@ -301,6 +304,7 @@ namespace HealingKnight.Gameplay.Enemies
         {
             state = State.Exposed;
             timer = exposedTime;
+            Sfx.Effect("Lombriz_Ruge", 0.8f);
             SetHeadPosition(Mathf.Clamp(endX, WalkableArea.MinX + 0.6f, WalkableArea.MaxX - 0.6f), 0.9f);
             Face(-direction);
             if (visual != null) visual.localRotation = Quaternion.identity;
@@ -311,6 +315,7 @@ namespace HealingKnight.Gameplay.Enemies
         private void Burrow()
         {
             SetExposed(false);
+            Sfx.EffectAt("Lombriz_Entra", transform.position, 0.8f);
             SetHeadPosition(transform.position.x, BelowGround);
             state = State.Underground;
             timer = undergroundTime / SpeedMultiplier;
@@ -385,6 +390,7 @@ namespace HealingKnight.Gameplay.Enemies
         private void BeginFlee()
         {
             state = State.Fleeing;
+            Sfx.Effect("Lombriz_Ruge");
             SetExposed(false);
             UpdateMound(false);
             if (!string.IsNullOrEmpty(fleeMessage)) GameplayEvents.RaiseMessage(fleeMessage);

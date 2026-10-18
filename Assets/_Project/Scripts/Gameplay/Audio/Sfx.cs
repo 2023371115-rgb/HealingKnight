@@ -45,6 +45,58 @@ namespace HealingKnight.Gameplay.Audio
         public static AudioClip HitSound(MedicationData med) =>
             med == null ? null : med.hitSound != null ? med.hitSound : Load("Impacto_" + med.name);
 
+        /// <summary>El primero de la lista que exista en Resources/SFX.</summary>
+        public static AudioClip LoadFirst(params string[] names)
+        {
+            foreach (string n in names)
+            {
+                AudioClip c = Load(n);
+                if (c != null) return c;
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Sonido de un enemigo: "&lt;archivo&gt;_&lt;evento&gt;" (Virus_Rinovirus_Muere), si no "&lt;tipo&gt;_&lt;evento&gt;" (Virus_Muere),
+        /// si no "Enemigo_&lt;evento&gt;". Así se puede dar sonido a un enemigo solo con nombrar bien el archivo.
+        /// </summary>
+        public static AudioClip EnemySound(Object enemyData, string evento)
+        {
+            string file = enemyData != null ? enemyData.name : "";
+            int cut = file.IndexOf('_');
+            string type = cut > 0 ? file.Substring(0, cut) : file;
+            return file.Length > 0
+                ? LoadFirst($"{file}_{evento}", $"{type}_{evento}", $"Enemigo_{evento}")
+                : Load($"Enemigo_{evento}");
+        }
+
+        /// <summary>Efecto por nombre (archivo en Resources/SFX), con el volumen general de efectos.</summary>
+        public static void Effect(string clipName, float volume = 1f) =>
+            Play(Load(clipName), volume * CombatAudio.Effects, 0.05f);
+
+        /// <summary>Igual, pero más bajo si pasa lejos de la cámara (y nada si está muy fuera de pantalla).</summary>
+        public static void EffectAt(string clipName, Vector2 position, float volume = 1f) =>
+            PlayAt(Load(clipName), position, volume * CombatAudio.Effects);
+
+        public static void PlayAt(AudioClip clip, Vector2 position, float volume, float pitchJitter = 0.06f)
+        {
+            float k = Audibility(position);
+            if (k > 0.02f) Play(clip, volume * k, pitchJitter);
+        }
+
+        /// <summary>1 dentro de la pantalla; baja hasta 0 a 8 u fuera de ella.</summary>
+        public static float Audibility(Vector2 position)
+        {
+            Camera cam = Camera.main;
+            if (cam == null || !cam.orthographic) return 1f;
+            Vector2 c = cam.transform.position;
+            float halfH = cam.orthographicSize;
+            float halfW = halfH * cam.aspect;
+            float dx = Mathf.Max(0f, Mathf.Abs(position.x - c.x) - halfW);
+            float dy = Mathf.Max(0f, Mathf.Abs(position.y - c.y) - halfH);
+            return Mathf.Clamp01(1f - Mathf.Max(dx, dy) / 8f);
+        }
+
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetStatics()
         {

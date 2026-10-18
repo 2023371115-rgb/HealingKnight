@@ -1,3 +1,4 @@
+using HealingKnight.Gameplay.Audio;
 using HealingKnight.Core.Damage;
 using HealingKnight.Gameplay.Enemies;
 using UnityEngine;
@@ -44,6 +45,7 @@ namespace HealingKnight.Gameplay.Level
 
             if (BrainHealth.Current != null) BrainHealth.Current.Damage(enemyShotDamage);
             hits++;
+            Sfx.EffectAt("Neurona_Golpe", transform.position, 0.7f);
             dim = Mathf.Min(0.6f, dim + dimPerHit);
             flashTimer = 0.2f;
 
@@ -54,6 +56,7 @@ namespace HealingKnight.Gameplay.Level
         /// <summary>La infección la vuelve neurona hiperexcitada (la usan los enemigos y el jefe rabia).</summary>
         public void Infect()
         {
+            Sfx.EffectAt("Neurona_Infecta", transform.position);
             if (infectedPrefab != null) Instantiate(infectedPrefab, transform.position, Quaternion.identity);
             GameplayEvents.RaiseMessage("¡Infectaron una neurona! Cálmala con Anticonvulsivo.");
             Destroy(gameObject);

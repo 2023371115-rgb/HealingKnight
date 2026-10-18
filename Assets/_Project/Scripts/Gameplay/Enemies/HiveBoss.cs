@@ -1,3 +1,4 @@
+using HealingKnight.Gameplay.Audio;
 using System.Collections.Generic;
 using HealingKnight.Core.Damage;
 using HealingKnight.Core.Pooling;
@@ -256,6 +257,7 @@ namespace HealingKnight.Gameplay.Enemies
             Vector2 toPlayer = (player.Position + Vector2.up * 0.9f) - origin;
             float baseAngle = Mathf.Atan2(toPlayer.y, toPlayer.x) * Mathf.Rad2Deg;
             int shots = Mathf.Max(1, sprayShots + (Phase - 1));
+            Sfx.PlayAt(Sfx.EnemySound(health.Data, "Disparo"), origin, CombatAudio.Effects);
             float spread = shots > 1 ? spraySpreadDegrees / (shots - 1) : 0f;
             for (int i = 0; i < shots; i++)
             {
@@ -308,6 +310,7 @@ namespace HealingKnight.Gameplay.Enemies
         {
             SetCells(false);
             if (minionPrefab == null) return;
+            Sfx.EffectAt("Colmena_Enjambre", Position);
             minions.RemoveAll(m => m == null || !m.IsAlive);
             int toSpawn = Mathf.Min(minionsPerSwarm, maxMinionsAlive - minions.Count);
             for (int i = 0; i < toSpawn; i++)

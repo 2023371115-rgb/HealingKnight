@@ -1,3 +1,4 @@
+using HealingKnight.Gameplay.Audio;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -32,6 +33,7 @@ namespace HealingKnight.Gameplay.Level
 
         public static NeuroprotectionField Create(Vector2 position, float radius, float seconds, Sprite circle, Color tint)
         {
+            Sfx.EffectAt("Campo_Neuroprotector", position);
             var go = new GameObject("CampoNeuroprotector");
             go.transform.position = new Vector3(position.x, position.y, 0f);
             var field = go.AddComponent<NeuroprotectionField>();

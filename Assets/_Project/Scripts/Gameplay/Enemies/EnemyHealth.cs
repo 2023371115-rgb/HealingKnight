@@ -1,3 +1,4 @@
+using HealingKnight.Gameplay.Audio;
 using System;
 using System.Collections;
 using HealingKnight.Core.Combat;
@@ -141,6 +142,8 @@ namespace HealingKnight.Gameplay.Enemies
         {
             if (dead) return;
             dead = true;
+            Sfx.PlayAt(Sfx.EnemySound(data, "Muere"), transform.position,
+                data != null && data.name.StartsWith("Jefe") ? CombatAudio.Effects : CombatAudio.Enemies);
             Died?.Invoke(this);
             AnyDied?.Invoke(this);
             StartCoroutine(DissolveAndDestroy());

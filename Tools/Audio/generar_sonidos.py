@@ -12,7 +12,20 @@ Cómo funciona (la "receta" de cada sonido):
      - "tri"    (triángulo): entre seno y cuadrada, suave pero con cuerpo.
   3. RUIDO (opcional) mezclado: da "aire", chispa o suciedad (impactos, electricidad).
   4. Una ENVOLVENTE: el volumen arranca rápido y se apaga; "caida" más alta = se apaga más rápido.
-  5. Extras: vibrato (tiembla), pulsos (burbujea), chispas (crujido eléctrico).
+  5. Extras: vibrato (tiembla), pulsos (burbujea), chispas (crujido eléctrico),
+     tremolo (el volumen sube y baja, como respirar), golpes (latidos / pasos) y burbujas sueltas.
+  6. Sonidos en BUCLE ("bucle": True): no se apagan y el final empata con el principio
+     (ambiente de cada sistema, charco de ácido...). Usa frecuencias de tremolo/golpes que "quepan"
+     exactas en la duración (p. ej. dur 8 s con tremolo 0.25 Hz = 2 respiraciones completas).
+  7. "forma": "sube" = el volumen crece en vez de apagarse (cargas, avisos).
+
+Dónde suena cada uno: el juego busca el archivo POR NOMBRE en Assets/_Project/Audio/Resources/SFX.
+  - Medicamentos:  Disparo_<Medicamento>, Impacto_<Medicamento>
+  - Enemigos:      <archivo del enemigo>_Disparo / _Muere  (p. ej. Virus_Rinovirus_Muere)
+                   si no existe, prueba <tipo>_Disparo / _Muere (Virus_, Bacteria_, Jefe_, Bloqueo_...)
+                   y si tampoco, Enemigo_Disparo / Enemigo_Muere.
+  - Todo lo demás: la lista completa está en LEEME.md (sección Sonido).
+Para cambiar un sonido basta con reemplazar el archivo con el MISMO nombre (también sirve un .wav o .mp3 de Victor).
 
 Uso (necesitas Python con numpy; y ffmpeg si quieres .ogg):
   python generar_sonidos.py                 -> genera TODOS en Assets/_Project/Audio/Resources/SFX
@@ -35,6 +48,11 @@ SALIDA = os.path.normpath(os.path.join(AQUI, "..", "..", "Assets", "_Project", "
 #            "vibrato": [Hz, profundidad Hz] (opcional), "pulsos": Hz (opcional, burbujeo)}
 #   ruido:  {"ruido": True, "suave": 0..1 (bajo = sordo, 1 = siseo), "vol": 0..1,
 #            "chispas": 0..1 (opcional: deja solo chispazos sueltos, eléctrico)}
+#   burbujas: {"burbujas": por segundo, "f0": Hz, "f1": Hz, "largo": s, "vol": 0..1}  (blips sueltos al azar)
+#   En cualquier capa: "tremolo": [Hz, 0..1]   -> el volumen ondula (respirar, zumbido que late)
+#                      "golpes": [cada s, caída] -> la capa suena a golpes (latido, pasos, retumbo)
+#                      "desde": s               -> la capa empieza más tarde (p. ej. el trueno después del chasquido)
+# Opciones del sonido: "dur", "caida", "ataque", "vol", "bucle": True, "forma": "sube"
 # --------------------------------------------------------------------------------------------
 SONIDOS = {
     # ---------------- Disparos (cortos, menos de 0.2 s) ----------------
@@ -79,11 +97,118 @@ SONIDOS = {
         {"onda": "sine", "f0": 1210, "f1": 1180, "curva": 1, "vol": 0.7},
         {"ruido": True, "suave": 0.3, "vol": 0.3}]},
 
-    # ---------------- Ejemplos para enemigos (cópialos y ajústalos) ----------------
-    "Enemigo_DisparoVirus":     {"dur": 0.22, "caida": 1.6, "capas": [
+    # ---------------- Jugador ----------------
+    "Jugador_Salto":            {"dur": 0.12, "caida": 1.5, "vol": 0.6, "capas": [
+        {"onda": "square", "f0": 260, "f1": 620, "curva": 0.7, "vol": 1}]},
+    "Jugador_SaltoDoble":       {"dur": 0.16, "caida": 1.5, "vol": 0.6, "capas": [
+        {"onda": "square", "f0": 420, "f1": 980, "curva": 0.7, "vol": 1},
+        {"ruido": True, "suave": 0.6, "vol": 0.3}]},
+    "Jugador_Herido":           {"dur": 0.30, "caida": 1.6, "capas": [
+        {"onda": "saw", "f0": 520, "f1": 140, "curva": 0.5, "vol": 1, "vibrato": [30, 40]},
+        {"ruido": True, "suave": 0.3, "vol": 0.5}]},
+    "Jugador_Muere":            {"dur": 1.10, "caida": 1.2, "capas": [
+        {"onda": "square", "f0": 700, "f1": 60, "curva": 0.8, "vol": 1, "vibrato": [8, 50]},
+        {"ruido": True, "suave": 0.1, "vol": 0.4}]},
+    "Escudo_Bloquea":           {"dur": 0.14, "caida": 2.5, "capas": [
+        {"onda": "sine", "f0": 900, "f1": 850, "vol": 1}, {"onda": "sine", "f0": 1350, "f1": 1300, "vol": 0.5},
+        {"ruido": True, "suave": 0.4, "vol": 0.4}]},
+    "Escudo_Parry":             {"dur": 0.45, "caida": 1.8, "capas": [
+        {"onda": "sine", "f0": 1760, "f1": 1760, "vol": 1}, {"onda": "sine", "f0": 2640, "f1": 2640, "vol": 0.6},
+        {"onda": "sine", "f0": 3520, "f1": 3600, "vol": 0.3, "vibrato": [12, 30]}]},
+    "Escudo_Rompe":             {"dur": 0.50, "caida": 1.5, "capas": [
+        {"ruido": True, "suave": 0.8, "vol": 1, "chispas": 0.6}, {"onda": "saw", "f0": 400, "f1": 90, "vol": 0.6}]},
+    "Bomba_Lanza":              {"dur": 0.22, "caida": 1.2, "vol": 0.6, "capas": [
+        {"ruido": True, "suave": 0.5, "vol": 0.6}, {"onda": "sine", "f0": 300, "f1": 700, "vol": 0.6}]},
+    "Bomba_Explota":            {"dur": 0.90, "caida": 2.2, "ataque": 0.003, "capas": [
+        {"ruido": True, "suave": 0.03, "vol": 1}, {"onda": "sine", "f0": 140, "f1": 35, "curva": 0.4, "vol": 1},
+        {"ruido": True, "suave": 0.7, "vol": 0.4, "chispas": 0.7}]},
+    "Bomba_Ganada":             {"dur": 0.35, "caida": 1.2, "vol": 0.6, "capas": [
+        {"onda": "square", "f0": 660, "f1": 660, "vol": 1, "golpes": [0.09, 2]},
+        {"onda": "square", "f0": 990, "f1": 1320, "vol": 0.6, "desde": 0.18}]},
+
+    # ---------------- Enemigos (por tipo; puedes hacer uno por enemigo con su nombre de archivo) ----------------
+    "Enemigo_Disparo":          {"dur": 0.18, "caida": 1.6, "vol": 0.7, "capas": [
+        {"onda": "tri", "f0": 500, "f1": 220, "curva": 0.6, "vol": 1}]},
+    "Virus_Disparo":            {"dur": 0.22, "caida": 1.6, "vol": 0.7, "capas": [
         {"onda": "tri", "f0": 300, "f1": 900, "curva": 0.6, "vol": 1, "vibrato": [20, 60]}]},
+    "Bacteria_Disparo":         {"dur": 0.18, "caida": 1.8, "vol": 0.7, "capas": [
+        {"onda": "sine", "f0": 260, "f1": 160, "vol": 1, "pulsos": 60}, {"ruido": True, "suave": 0.1, "vol": 0.4}]},
     "Enemigo_Muere":            {"dur": 0.35, "caida": 1.4, "capas": [
         {"onda": "saw", "f0": 600, "f1": 60, "curva": 0.5, "vol": 0.7}, {"ruido": True, "suave": 0.15, "vol": 0.8}]},
+    "Bloqueo_Muere":            {"dur": 0.80, "caida": 1.3, "capas": [
+        {"burbujas": 40, "f0": 200, "f1": 500, "largo": 0.06, "vol": 1}, {"ruido": True, "suave": 0.05, "vol": 0.5}]},
+    "Jefe_Muere":               {"dur": 1.80, "caida": 1.6, "capas": [
+        {"ruido": True, "suave": 0.02, "vol": 1}, {"onda": "saw", "f0": 220, "f1": 30, "curva": 0.6, "vol": 0.8},
+        {"ruido": True, "suave": 0.8, "vol": 0.3, "chispas": 0.85, "golpes": [0.25, 4]}]},
+    "Jefe_Rabia_Virion_Muere":  {"dur": 0.25, "caida": 2.0, "capas": [
+        {"onda": "square", "f0": 1200, "f1": 200, "curva": 0.4, "vol": 1}, {"ruido": True, "suave": 0.9, "vol": 0.6, "chispas": 0.5}]},
+    "Neurona_Hiperexcitada_Muere": {"dur": 0.70, "caida": 1.4, "capas": [   # al calmarla: vuelve a ser sana
+        {"onda": "sine", "f0": 523, "f1": 523, "vol": 1}, {"onda": "sine", "f0": 659, "f1": 659, "vol": 0.8, "desde": 0.08},
+        {"onda": "sine", "f0": 784, "f1": 784, "vol": 0.7, "desde": 0.16}, {"onda": "sine", "f0": 1047, "f1": 1047, "vol": 0.5, "desde": 0.24}]},
+
+    # ---------------- Digestivo ----------------
+    "Acido_Burbujeo":           {"dur": 3.0, "bucle": True, "vol": 0.6, "capas": [   # bucle cerca del charco
+        {"burbujas": 14, "f0": 180, "f1": 600, "largo": 0.07, "vol": 1}, {"ruido": True, "suave": 0.03, "vol": 0.25}]},
+    "Acido_Quema":              {"dur": 0.30, "caida": 1.5, "vol": 0.7, "capas": [
+        {"ruido": True, "suave": 1, "vol": 1}, {"burbujas": 30, "f0": 400, "f1": 900, "largo": 0.04, "vol": 0.6}]},
+    "Lombriz_Retumbo":          {"dur": 0.90, "forma": "sube", "caida": 0.7, "capas": [   # aviso: viene por debajo
+        {"ruido": True, "suave": 0.01, "vol": 1}, {"onda": "sine", "f0": 45, "f1": 60, "vol": 0.8, "golpes": [0.15, 3]}]},
+    "Lombriz_Sale":             {"dur": 0.60, "caida": 1.5, "capas": [
+        {"ruido": True, "suave": 0.08, "vol": 1}, {"onda": "saw", "f0": 90, "f1": 260, "curva": 0.5, "vol": 0.7},
+        {"burbujas": 30, "f0": 150, "f1": 300, "largo": 0.05, "vol": 0.5}]},
+    "Lombriz_Entra":            {"dur": 0.50, "caida": 1.4, "capas": [
+        {"ruido": True, "suave": 0.05, "vol": 1}, {"onda": "saw", "f0": 220, "f1": 70, "vol": 0.6}]},
+    "Lombriz_Ruge":             {"dur": 1.00, "caida": 1.2, "ataque": 0.05, "capas": [
+        {"onda": "saw", "f0": 110, "f1": 75, "vol": 1, "vibrato": [14, 12]}, {"onda": "saw", "f0": 166, "f1": 110, "vol": 0.6, "vibrato": [11, 15]},
+        {"ruido": True, "suave": 0.15, "vol": 0.6, "tremolo": [14, 0.6]}]},
+
+    # ---------------- Respiratorio ----------------
+    "Alveolo_Infla":            {"dur": 0.50, "forma": "sube", "caida": 0.8, "vol": 0.5, "capas": [
+        {"ruido": True, "suave": 0.2, "vol": 1}, {"onda": "sine", "f0": 200, "f1": 340, "vol": 0.4}]},
+    "Alveolo_Desinfla":         {"dur": 0.55, "caida": 1.2, "vol": 0.5, "capas": [
+        {"ruido": True, "suave": 0.15, "vol": 1}, {"onda": "sine", "f0": 320, "f1": 160, "vol": 0.4}]},
+    "Alveolo_Rebote":           {"dur": 0.35, "caida": 1.6, "capas": [   # trampolín
+        {"onda": "sine", "f0": 140, "f1": 520, "curva": 0.5, "vol": 1, "vibrato": [22, 25]},
+        {"onda": "tri", "f0": 280, "f1": 1040, "curva": 0.5, "vol": 0.3}]},
+    "Colmena_Enjambre":         {"dur": 1.20, "caida": 1.0, "ataque": 0.1, "capas": [
+        {"onda": "saw", "f0": 210, "f1": 230, "vol": 1, "vibrato": [37, 18]}, {"onda": "saw", "f0": 317, "f1": 340, "vol": 0.6, "vibrato": [29, 22]},
+        {"ruido": True, "suave": 0.3, "vol": 0.3}]},
+
+    # ---------------- Nervioso ----------------
+    "Rayo_Aviso":               {"dur": 1.00, "forma": "sube", "caida": 1.5, "vol": 0.6, "capas": [   # dura lo mismo que el aviso
+        {"ruido": True, "suave": 1, "vol": 1, "chispas": 0.9}, {"onda": "saw", "f0": 120, "f1": 480, "curva": 1.5, "vol": 0.5}]},
+    "Rayo_Cae":                 {"dur": 1.60, "caida": 1.8, "ataque": 0.001, "capas": [
+        {"ruido": True, "suave": 1, "vol": 1, "chispas": 0.3, "golpes": [0.07, 2]},
+        {"ruido": True, "suave": 0.015, "vol": 1, "desde": 0.04}, {"onda": "sine", "f0": 80, "f1": 30, "vol": 0.7}]},
+    "Neurona_Carga":            {"dur": 0.90, "forma": "sube", "caida": 1.2, "vol": 0.5, "capas": [
+        {"onda": "square", "f0": 300, "f1": 1400, "curva": 1.3, "vol": 1, "tremolo": [18, 0.7]}]},
+    "Neurona_Descarga":         {"dur": 0.40, "caida": 2.0, "capas": [
+        {"ruido": True, "suave": 1, "vol": 1, "chispas": 0.4}, {"onda": "square", "f0": 1800, "f1": 200, "curva": 0.3, "vol": 0.7}]},
+    "Neurona_Golpe":            {"dur": 0.20, "caida": 2.0, "vol": 0.6, "capas": [
+        {"onda": "sine", "f0": 700, "f1": 300, "vol": 1}, {"onda": "sine", "f0": 740, "f1": 320, "vol": 0.8}]},
+    "Neurona_Infecta":          {"dur": 0.80, "caida": 1.2, "capas": [
+        {"onda": "saw", "f0": 600, "f1": 180, "curva": 0.7, "vol": 1, "vibrato": [9, 40]},
+        {"ruido": True, "suave": 1, "vol": 0.5, "chispas": 0.8}]},
+    "Campo_Neuroprotector":     {"dur": 1.20, "caida": 1.3, "ataque": 0.05, "capas": [
+        {"onda": "sine", "f0": 880, "f1": 880, "vol": 1, "tremolo": [6, 0.5]}, {"onda": "sine", "f0": 1320, "f1": 1330, "vol": 0.6},
+        {"onda": "sine", "f0": 440, "f1": 440, "vol": 0.6}]},
+    "Rabia_Chillido":           {"dur": 0.45, "caida": 1.4, "capas": [   # la cadena da la vuelta
+        {"onda": "saw", "f0": 1300, "f1": 900, "vol": 1, "vibrato": [45, 120]}, {"ruido": True, "suave": 0.7, "vol": 0.4}]},
+
+    # ---------------- Ambiente de cada sistema (bucles de 8 s, suenan bajito de fondo) ----------------
+    "Ambiente_Digestivo":       {"dur": 8.25, "bucle": True, "vol": 0.7, "capas": [
+        {"onda": "sine", "f0": 48, "f1": 48, "vol": 1, "golpes": [1.0, 9]},                 # latido, 60 por minuto
+        {"onda": "sine", "f0": 62, "f1": 62, "vol": 0.6, "golpes": [1.0, 9], "desde": 0},
+        {"ruido": True, "suave": 0.01, "vol": 0.5, "tremolo": [0.125, 0.6]},              # retumbo de tripas
+        {"burbujas": 3, "f0": 90, "f1": 260, "largo": 0.25, "vol": 0.35}]},               # gorgoteos
+    "Ambiente_Respiratorio":    {"dur": 8.25, "bucle": True, "vol": 0.7, "capas": [
+        {"ruido": True, "suave": 0.12, "vol": 1, "tremolo": [0.25, 0.9]},                 # respirar: 2 ciclos en 8 s
+        {"ruido": True, "suave": 0.02, "vol": 0.5}]},
+    "Ambiente_Nervioso":        {"dur": 8.25, "bucle": True, "vol": 0.6, "capas": [
+        {"onda": "saw", "f0": 60, "f1": 60, "vol": 0.25, "tremolo": [0.5, 0.5]},          # zumbido eléctrico
+        {"onda": "sine", "f0": 120, "f1": 120, "vol": 0.4},
+        {"ruido": True, "suave": 1, "vol": 0.6, "chispas": 0.997},                        # chispitas sueltas
+        {"burbujas": 1.5, "f0": 1800, "f1": 2600, "largo": 0.04, "vol": 0.3}]},           # sinapsis
 }
 
 rng = np.random.default_rng(7)
@@ -117,15 +242,56 @@ def capa_ruido(c, n):
         x = x * (rng.uniform(0, 1, n) > c["chispas"])
     return x * c.get("vol", 1)
 
+def capa_burbujas(c, n):
+    s = np.zeros(n)
+    largo = int(SR * c.get("largo", 0.05))
+    cantidad = int(c["burbujas"] * n / SR)
+    for _ in range(cantidad):
+        i = int(rng.uniform(0, max(1, n - largo)))
+        f0 = c["f0"] * rng.uniform(0.7, 1.4)
+        f1 = c["f1"] * rng.uniform(0.7, 1.4)
+        f = np.linspace(f0, f1, largo)
+        blip = np.sin(2 * np.pi * np.cumsum(f) / SR) * np.linspace(1, 0, largo) ** 2
+        s[i:i + largo] += blip * rng.uniform(0.4, 1)
+    return s * c.get("vol", 1)
+
+def modular(c, s):
+    n = len(s)
+    k = np.arange(n) / SR
+    if "tremolo" in c:
+        hz, prof = c["tremolo"]
+        s = s * (1 - prof * (0.5 - 0.5 * np.cos(2 * np.pi * hz * k)))
+    if "golpes" in c:
+        cada, caida = c["golpes"]
+        fase = (k % cada) / cada
+        s = s * np.exp(-fase * caida)
+    if "desde" in c:
+        s = s * (k >= c["desde"])
+    return s
+
 def generar(nombre, d):
     n = int(SR * d["dur"])
     s = np.zeros(n)
     for c in d["capas"]:
-        s += capa_ruido(c, n) if c.get("ruido") else capa_tono(c, n)
+        if c.get("ruido"): capa = capa_ruido(c, n)
+        elif "burbujas" in c: capa = capa_burbujas(c, n)
+        else: capa = capa_tono(c, n)
+        s += modular(c, capa)
     t = np.linspace(0, 1, n)
-    env = (1 - t) ** d.get("caida", 2)
+    if d.get("bucle"):
+        # Bucle: sin envolvente; el final se funde con el principio para que no se note el corte.
+        x = int(SR * 0.25)
+        mezcla = np.linspace(0, 1, x)
+        s[:x] = s[:x] * mezcla + s[-x:] * (1 - mezcla)
+        s = s[:-x]
+        env = np.ones(len(s))
+    elif d.get("forma") == "sube":
+        env = t ** d.get("caida", 2)
+        env[-int(SR * 0.01):] *= np.linspace(1, 0, int(SR * 0.01))
+    else:
+        env = (1 - t) ** d.get("caida", 2)
     ataque = int(SR * d.get("ataque", 0.002))
-    if ataque > 0: env[:ataque] *= np.linspace(0, 1, ataque)
+    if ataque > 0 and not d.get("bucle"): env[:ataque] *= np.linspace(0, 1, ataque)
     s = s * env
     s = s / (np.max(np.abs(s)) + 1e-9) * d.get("vol", 0.8)
 

@@ -1,3 +1,4 @@
+using HealingKnight.Gameplay.Audio;
 using HealingKnight.Core.Damage;
 using HealingKnight.Gameplay.Player;
 using UnityEngine;
@@ -18,6 +19,8 @@ namespace HealingKnight.Gameplay.Hazards
         private float timer;
 
         public Vector2 Size => size;
+
+        private void Start() => SfxLoop.Attach(gameObject, "Acido_Burbujeo", 0.5f, size.x * 0.5f, size.x * 0.5f + 7f);
 
         private void Update()
         {
@@ -42,6 +45,7 @@ namespace HealingKnight.Gameplay.Hazards
             DamageInfo info = DamageInfo.Create(damagePerTick, DamageKind.Environment, Team.Neutral, c);
             info.blockable = false;
             player.Health.ApplyDamage(info);
+            Sfx.Effect("Acido_Quema", 0.8f);
         }
 
         private void OnDrawGizmos()

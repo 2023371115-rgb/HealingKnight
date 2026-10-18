@@ -1,3 +1,4 @@
+using HealingKnight.Gameplay.Audio;
 using System.Collections.Generic;
 using HealingKnight.Core.Combat2D;
 using HealingKnight.Core.Damage;
@@ -292,6 +293,7 @@ namespace HealingKnight.Gameplay.Enemies
             Vector2 targetPoint = player.Position + new Vector2(0f, player.IsCrouching ? 0.5f : 1f);
             Vector2 dir = IsFlying ? (targetPoint - origin).normalized : new Vector2(facing, 0f);
 
+            Sfx.PlayAt(Sfx.EnemySound(data, "Disparo"), origin, CombatAudio.Enemies);
             Projectile p = projectilePool.Get();
             p.Launch(new ProjectileShot
             {

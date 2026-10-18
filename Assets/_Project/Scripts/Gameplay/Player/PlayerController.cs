@@ -89,6 +89,7 @@ namespace HealingKnight.Gameplay.Player
             health = GetComponent<PlayerHealth>();
             hurtbox = GetComponent<Hurtbox>();
             if (bodyVisual != null) bodyVisualBaseScale = bodyVisual.localScale;
+            if (GetComponent<PlayerAudio>() == null) gameObject.AddComponent<PlayerAudio>(); // salto, daño, escudo, bombas
 
             if (config == null) Debug.LogError("[PlayerController] Falta asignar PlayerConfig.", this);
         }
