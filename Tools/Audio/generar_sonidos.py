@@ -47,7 +47,8 @@ SALIDA = os.path.normpath(os.path.join(AQUI, "..", "..", "Assets", "_Project", "
 #            <1 = cambia rápido al principio, >1 = cambia al final, "vol": 0..1,
 #            "vibrato": [Hz, profundidad Hz] (opcional), "pulsos": Hz (opcional, burbujeo)}
 #   ruido:  {"ruido": True, "suave": 0..1 (bajo = sordo, 1 = siseo), "vol": 0..1,
-#            "chispas": 0..1 (opcional: deja solo chispazos sueltos, eléctrico)}
+#            "chispas": 0..1 (opcional: deja solo chispazos sueltos, eléctrico),
+#            "polos": 1..4 (opcional: filtra varias veces; para fondos usa 3 o 4, si no suena a estática)}
 #   burbujas: {"burbujas": por segundo, "f0": Hz, "f1": Hz, "largo": s, "vol": 0..1}  (blips sueltos al azar)
 #   En cualquier capa: "tremolo": [Hz, 0..1]   -> el volumen ondula (respirar, zumbido que late)
 #                      "golpes": [cada s, caída] -> la capa suena a golpes (latido, pasos, retumbo)
@@ -196,14 +197,14 @@ SONIDOS = {
         {"onda": "saw", "f0": 1300, "f1": 900, "vol": 1, "vibrato": [45, 120]}, {"ruido": True, "suave": 0.7, "vol": 0.4}]},
 
     # ---------------- Ambiente de cada sistema (bucles de 8 s, suenan bajito de fondo) ----------------
-    "Ambiente_Digestivo":       {"dur": 8.25, "bucle": True, "vol": 0.7, "capas": [
-        {"onda": "sine", "f0": 48, "f1": 48, "vol": 1, "golpes": [1.0, 9]},                 # latido, 60 por minuto
-        {"onda": "sine", "f0": 62, "f1": 62, "vol": 0.6, "golpes": [1.0, 9], "desde": 0},
-        {"ruido": True, "suave": 0.01, "vol": 0.5, "tremolo": [0.125, 0.6]},              # retumbo de tripas
-        {"burbujas": 3, "f0": 90, "f1": 260, "largo": 0.25, "vol": 0.35}]},               # gorgoteos
-    "Ambiente_Respiratorio":    {"dur": 8.25, "bucle": True, "vol": 0.7, "capas": [
-        {"ruido": True, "suave": 0.12, "vol": 1, "tremolo": [0.25, 0.9]},                 # respirar: 2 ciclos en 8 s
-        {"ruido": True, "suave": 0.02, "vol": 0.5}]},
+    "Ambiente_Digestivo":       {"dur": 8.25, "bucle": True, "vol": 0.35, "capas": [
+        {"onda": "sine", "f0": 55, "f1": 55, "vol": 1, "golpes": [1.0, 10]},              # latido, 60 por minuto (lub)
+        {"onda": "sine", "f0": 48, "f1": 48, "vol": 0.7, "golpes": [1.0, 14], "desde": 0},
+        {"onda": "sine", "f0": 38, "f1": 38, "vol": 0.25, "tremolo": [0.125, 0.8]},       # retumbo de tripas, muy grave
+        {"burbujas": 1.2, "f0": 70, "f1": 160, "largo": 0.35, "vol": 0.3}]},              # gorgoteo de vez en cuando
+    "Ambiente_Respiratorio":    {"dur": 8.25, "bucle": True, "vol": 0.3, "capas": [
+        {"ruido": True, "suave": 0.03, "polos": 4, "vol": 1, "tremolo": [0.25, 1]},       # aire suave: 2 respiraciones en 8 s
+        {"onda": "sine", "f0": 70, "f1": 70, "vol": 0.25, "tremolo": [0.25, 1]}]},        # cuerpo grave de la respiración
     "Ambiente_Nervioso":        {"dur": 8.25, "bucle": True, "vol": 0.6, "capas": [
         {"onda": "saw", "f0": 60, "f1": 60, "vol": 0.25, "tremolo": [0.5, 0.5]},          # zumbido eléctrico
         {"onda": "sine", "f0": 120, "f1": 120, "vol": 0.4},
@@ -234,10 +235,12 @@ def capa_tono(c, n):
 def capa_ruido(c, n):
     x = rng.uniform(-1, 1, n)
     a = c.get("suave", 1)
-    if a < 1:  # filtro: menos agudos = ruido más sordo
-        y = np.zeros(n)
-        for i in range(1, n): y[i] = y[i - 1] + a * (x[i] - y[i - 1])
-        x = y / (np.max(np.abs(y)) + 1e-9)
+    if a < 1:  # filtro: menos agudos = ruido más sordo. "polos" = cuántas veces se filtra (más = más suave, sin siseo)
+        for _ in range(c.get("polos", 1)):
+            y = np.zeros(n)
+            for i in range(1, n): y[i] = y[i - 1] + a * (x[i] - y[i - 1])
+            x = y
+        x = x / (np.max(np.abs(x)) + 1e-9)
     if "chispas" in c:
         x = x * (rng.uniform(0, 1, n) > c["chispas"])
     return x * c.get("vol", 1)
