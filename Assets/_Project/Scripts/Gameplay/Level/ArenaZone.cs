@@ -65,6 +65,27 @@ namespace HealingKnight.Gameplay.Level
 
         public event Action<ArenaZone> Cleared;
 
+        private static readonly List<ArenaZone> running = new List<ArenaZone>();
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetStatics() => running.Clear();
+
+        /// <summary>
+        /// Un enemigo que nació en plena pelea (cocos del estafilococo, huevos y crías de oxiuro) cuenta para la arena
+        /// donde aparece: no se desbloquea hasta acabar también con él.
+        /// </summary>
+        public static void Adopt(EnemyHealth enemy)
+        {
+            if (enemy == null) return;
+            float x = enemy.transform.position.x;
+            foreach (ArenaZone a in running)
+                if (a != null && a.IsRunning && x >= a.leftBound - 2f && x <= a.rightBound + 2f)
+                {
+                    a.alive.Add(enemy);
+                    return;
+                }
+        }
+
         private void Update()
         {
             PlayerController player = PlayerController.Current;
@@ -90,6 +111,7 @@ namespace HealingKnight.Gameplay.Level
         private void Begin()
         {
             status = Status.Running;
+            if (!running.Contains(this)) running.Add(this);
             waveIndex = -1;
             waveTimer = waves.Count > 0 ? waves[0].delayBefore : 0f;
             WalkableArea.Lock(leftBound, rightBound);
@@ -138,6 +160,7 @@ namespace HealingKnight.Gameplay.Level
         private void Finish()
         {
             status = Status.Cleared;
+            running.Remove(this);
             WalkableArea.Unlock();
             GameplayEvents.RaiseArenaCleared(this);
             if (!string.IsNullOrEmpty(clearMessage)) GameplayEvents.RaiseMessage(clearMessage);
@@ -156,6 +179,7 @@ namespace HealingKnight.Gameplay.Level
             if (status == Status.Running)
             {
                 status = Status.Waiting;
+                running.Remove(this);
                 WalkableArea.Unlock();
             }
         }

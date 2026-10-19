@@ -585,7 +585,7 @@ namespace HealingKnight.EditorTools
 
             // Tutorial: un enemigo a la vez.
             Arena("Arena_1_Tutorial", 8f, 18f,
-                "H. pylori: una bacteria. Dispara con J (de cerca acuchilla solo). Cambia de cápsula con Q/E hasta encontrar la que funciona.",
+                "H. pylori: una bacteria que se entierra en el moco y sale debajo de ti (enterrada no le haces daño). Cambia de cápsula con Q/E hasta encontrar la que funciona.",
                 W(0.8f, E(prefabs.HPylori, data.HPylori, 1)),
                 W(0.8f, E(prefabs.HPylori, data.HPylori, 2)));
 
@@ -632,12 +632,12 @@ namespace HealingKnight.EditorTools
 
             Platform(3f, 2.2f, 3f);
 
-            Arena("Arena_1_Giardia", 10f, 18f, "Giardia: parásito. Antiparasitario. Agáchate (S) para darle a los bajitos.",
+            Arena("Arena_1_Giardia", 10f, 18f, "Giardia: salta y se te pega (te frena y te daña). Dispárale para despegarla. Antiparasitario (el antibiótico también sirve).",
                 W(0.6f, E(prefabs.Giardia, data.Giardia, 2)),
                 W(1.0f, E(prefabs.Giardia, data.Giardia, 2, SpawnSide.Both)));
             Platform(18f, 2.4f, 3.5f);
 
-            Arena("Arena_2_Rotavirus", 36f, 18f, "Rotavirus: vuela y dispara. Apunta arriba (W) o en diagonal. Antiviral.",
+            Arena("Arena_2_Rotavirus", 36f, 18f, "Rotavirus (rota = rueda): rueda sin parar y rebota. Sáltalo y dispárale. Antiviral.",
                 W(0.6f, E(prefabs.Rotavirus, data.Rotavirus, 2)),
                 W(1.0f, E(prefabs.Rotavirus, data.Rotavirus, 1), E(prefabs.Giardia, data.Giardia, 2, SpawnSide.Left)));
             Platform(40f, 2.2f, 3f);
@@ -666,14 +666,14 @@ namespace HealingKnight.EditorTools
             }, "NODO: Intestino grueso. La lombriz está cerca.",
                 new Vector2(29f, 3f));
 
-            Arena("Arena_1_Amebas", 10f, 18f, "Entamoeba: una ameba lenta y resistente. Las bombas (L) ayudan.",
+            Arena("Arena_1_Amebas", 10f, 18f, "Entamoeba: ameba lenta; su seudópodo llega lejos y te jala. No te quedes enfrente. Antiparasitario.",
                 W(0.6f, E(prefabs.Entamoeba, data.Entamoeba, 1), E(prefabs.Oxiuro, data.Oxiuro, 2, SpawnSide.Left)),
                 W(1.0f, E(prefabs.Entamoeba, data.Entamoeba, 1), E(prefabs.Oxiuro, data.Oxiuro, 2, SpawnSide.Both)));
             Platform(14f, 2.2f, 3f);
 
             Platform(31f, 2.4f, 2.5f);
 
-            Arena("Arena_2_CDifficile", 36f, 18f, "C. difficile: bacteria. Antibiótico.",
+            Arena("Arena_2_CDifficile", 36f, 18f, "C. difficile: herida se vuelve espora y todo le rebota; espera a que despierte. Solo el antibiótico.",
                 W(0.6f, E(prefabs.CDifficile, data.CDifficile, 2), E(prefabs.Oxiuro, data.Oxiuro, 1, SpawnSide.Left)),
                 W(1.0f, E(prefabs.CDifficile, data.CDifficile, 2), E(prefabs.Entamoeba, data.Entamoeba, 1, SpawnSide.Left)));
             Platform(42f, 2.2f, 3f);
@@ -700,7 +700,7 @@ namespace HealingKnight.EditorTools
             }, "NIVEL SECRETO · BOCA. NODO: Placa bacteriana detectada.");
 
             // Dientes: plataformas blancas.
-            Arena("Arena_1_Caries", 8f, 18f, "S. mutans: la bacteria de la caries. Antibiótico.",
+            Arena("Arena_1_Caries", 8f, 18f, "S. mutans (caries): te lanza ácido en arco desde lejos. Antibiótico.",
                 W(0.6f, E(prefabs.SMutans, data.SMutans, 3)),
                 W(1.0f, E(prefabs.SMutans, data.SMutans, 2), E(prefabs.SMutans, data.SMutans, 2, SpawnSide.Left)));
             Platform(12f, 2.2f, 2f);
@@ -739,7 +739,7 @@ namespace HealingKnight.EditorTools
 
             // Arena 1: virus del resfriado y polen. Plataformas para pelear con los voladores.
             Arena("Arena_1_Resfriado", 8f, 18f,
-                "Rinovirus: virus del resfriado, flota y dispara. Antiviral. El polen es un alérgeno: Antihistamínico.",
+                "Rinovirus (resfriado): no hay antiviral para él, los medicamentos le hacen poco y se cura solo con el tiempo. El polen te persigue con el aire: Antihistamínico.",
                 W(0.8f, E(prefabs.Rinovirus, data.Rinovirus, 1), E(prefabs.Polen, data.Polen, 2)),
                 W(1.0f, E(prefabs.Rinovirus, data.Rinovirus, 2), E(prefabs.Polen, data.Polen, 2, SpawnSide.Left)));
             Platform(10f, 2.4f, 2.6f);
@@ -758,7 +758,7 @@ namespace HealingKnight.EditorTools
             Platform(45.5f, 2.6f, 1.6f);
 
             BlockedArena("Arena_2_Estafilococo", 52f, 22f,
-                "S. aureus: vive en la nariz y ataca en grupo. Antibiótico. Luego disuelve la mucosidad con Mucolítico.", true,
+                "S. aureus: racimo de cocos; al romperlo se separa en cocos sueltos. Antibiótico. Luego disuelve la mucosidad con Mucolítico.", true,
                 W(0.6f, E(prefabs.SAureus, data.SAureus, 3)),
                 W(1.0f, E(prefabs.SAureus, data.SAureus, 2, SpawnSide.Left), E(prefabs.Polen, data.Polen, 2), E(prefabs.Rinovirus, data.Rinovirus, 1)));
             Platform(55f, 2.4f, 2.6f);
@@ -781,7 +781,7 @@ namespace HealingKnight.EditorTools
             }, "NODO: Tráquea. Detectamos tos ferina: Bordetella pertussis. Antibiótico.",
                 new Vector2(31f, 4f), new Vector2(44.5f, 5f), new Vector2(76f, 3f));
 
-            Arena("Arena_1_TosFerina", 8f, 18f, "B. pertussis: bacteria de la tos ferina. Empuja fuerte al chocar. Antibiótico.",
+            Arena("Arena_1_TosFerina", 8f, 18f, "B. pertussis (tos ferina): se infla y tose tres veces; cada tos te empuja. Antibiótico.",
                 W(0.6f, E(prefabs.Pertussis, data.Pertussis, 2)),
                 W(1.0f, E(prefabs.Pertussis, data.Pertussis, 2, SpawnSide.Both), E(prefabs.Rinovirus, data.Rinovirus, 1)));
             Platform(11f, 2.4f, 2.6f);
@@ -800,7 +800,7 @@ namespace HealingKnight.EditorTools
             Platform(50.5f, 2.4f, 2.2f);
 
             BlockedArena("Arena_2_Bronquio", 56f, 22f,
-                "Influenza: virus que dispara más rápido. Antiviral. Al final, mucosidad: Mucolítico.", true,
+                "Influenza: flota alto y se lanza en picada con sus espículas. Antiviral. Al final, mucosidad: Mucolítico.", true,
                 W(0.6f, E(prefabs.Pertussis, data.Pertussis, 3)),
                 W(1.0f, E(prefabs.Influenza, data.Influenza, 1), E(prefabs.Pertussis, data.Pertussis, 2, SpawnSide.Left)),
                 W(1.0f, E(prefabs.Influenza, data.Influenza, 2), E(prefabs.Polen, data.Polen, 2, SpawnSide.Both)));
@@ -830,7 +830,7 @@ namespace HealingKnight.EditorTools
 
             // Tramo 1
             BlockedArena("Tramo_1_Neumonia", 8f, 20f,
-                "S. pneumoniae (neumonía): atacan en grupo. Antibiótico.", true,
+                "S. pneumoniae (neumonía): avanzan a saltos y te caen encima. Antibiótico.", true,
                 W(0.6f, E(prefabs.Neumococo, data.Neumococo, 3)),
                 W(1.0f, E(prefabs.Neumococo, data.Neumococo, 2, SpawnSide.Left), E(prefabs.Influenza, data.Influenza, 1)));
             Platform(10f, 2.4f, 2.6f);
@@ -933,7 +933,7 @@ namespace HealingKnight.EditorTools
             new GameObject("SaludDelCerebro").AddComponent<BrainHealth>();
 
             // Entrada: un grupo y una neurona roja para calentar.
-            Arena("Arena_Entrada", 4f, 14f, "Prepárate: Antiviral para la rabia, Anticonvulsivo para las neuronas rojas.",
+            Arena("Arena_Entrada", 4f, 14f, "Prepárate: el jefe rabia cae con Antiviral; Anticonvulsivo para las neuronas rojas y la rabia suelta.",
                 W(0.6f, E(prefabs.Rabia, data.Rabia, 2), E(prefabs.Poliovirus, data.Poliovirus, 1)));
             Neuron(10f, 3.2f);
             RedNeuron(15f, 1.5f);
@@ -989,7 +989,7 @@ namespace HealingKnight.EditorTools
 
             Platform(2f, 2.4f, 3f);
 
-            Arena("Arena_1_Meningitis", 8f, 18f, "N. meningitidis: bacteria de la meningitis. Antibiótico.",
+            Arena("Arena_1_Meningitis", 8f, 18f, "N. meningitidis (meningitis): se agazapa y cruza a toda velocidad. Antibiótico.",
                 W(0.6f, E(prefabs.Meningococo, data.Meningococo, 2)),
                 W(1.0f, E(prefabs.Poliovirus, data.Poliovirus, 2), E(prefabs.Meningococo, data.Meningococo, 1, SpawnSide.Left)));
             Platform(10f, 2.4f, 2.6f);
@@ -1005,7 +1005,7 @@ namespace HealingKnight.EditorTools
             Platform(44f, 5.6f, 2.4f);
             Platform(47.5f, 4f, 2.4f);
 
-            Arena("Arena_2_Poliovirus", 54f, 20f, "Poliovirus ataca la médula: Antiviral. La rabia embiste: Antiviral. ¡Pelea bajo la tormenta!",
+            Arena("Arena_2_Poliovirus", 54f, 20f, "Poliovirus: sus disparos te paralizan un momento. Antiviral. La rabia muerde en ráfaga: Anticonvulsivo. ¡Pelea bajo la tormenta!",
                 W(0.6f, E(prefabs.Rabia, data.Rabia, 2), E(prefabs.Meningococo, data.Meningococo, 2, SpawnSide.Left)),
                 W(1.0f, E(prefabs.Poliovirus, data.Poliovirus, 2), E(prefabs.Rabia, data.Rabia, 1)));
             Storm(51f, 74f);
@@ -1058,7 +1058,7 @@ namespace HealingKnight.EditorTools
             Neuron(41f, 1.8f);
 
             // Tramo 2: pelea bajo la tormenta con neuronas en medio.
-            Arena("Tramo_2_Encefalitis", 46f, 22f, "Herpes simple (encefalitis): dispara desde arriba. Antiviral.",
+            Arena("Tramo_2_Encefalitis", 46f, 22f, "Herpes (encefalitis): se vuelve latente (invisible) y reaparece disparando en ráfaga. Antiviral.",
                 W(0.6f, E(prefabs.Herpes, data.Herpes, 2), E(prefabs.Rabia, data.Rabia, 2, SpawnSide.Left)),
                 W(1.0f, E(prefabs.Meningococo, data.Meningococo, 3, SpawnSide.Both), E(prefabs.Poliovirus, data.Poliovirus, 1)));
             Storm(43f, 68f);
@@ -1177,9 +1177,17 @@ namespace HealingKnight.EditorTools
             Arena("Arena_Enemigos", 10f, 20f, "Todos los enemigos",
                 W(0.5f, E(prefabs.HPylori, data.HPylori, 1), E(prefabs.Giardia, data.Giardia, 1, SpawnSide.Left)),
                 W(0.8f, E(prefabs.Rotavirus, data.Rotavirus, 1), E(prefabs.Entamoeba, data.Entamoeba, 1, SpawnSide.Left)),
-                W(0.8f, E(prefabs.CDifficile, data.CDifficile, 1), E(prefabs.Oxiuro, data.Oxiuro, 2, SpawnSide.Left)));
+                W(0.8f, E(prefabs.CDifficile, data.CDifficile, 1), E(prefabs.Oxiuro, data.Oxiuro, 2, SpawnSide.Left)),
+                // Un tipo de comportamiento por oleada, para probarlos todos (ver EnemyBehavior).
+                W(0.8f, E(prefabs.SMutans, data.SMutans, 2), E(prefabs.SAureus, data.SAureus, 1, SpawnSide.Left)),
+                W(0.8f, E(prefabs.Pertussis, data.Pertussis, 1), E(prefabs.Neumococo, data.Neumococo, 2, SpawnSide.Left)),
+                W(0.8f, E(prefabs.Rinovirus, data.Rinovirus, 2), E(prefabs.Polen, data.Polen, 2, SpawnSide.Left)),
+                W(0.8f, E(prefabs.Influenza, data.Influenza, 1), E(prefabs.Tuberculosis, data.Tuberculosis, 1, SpawnSide.Left)),
+                W(0.8f, E(prefabs.Meningococo, data.Meningococo, 1), E(prefabs.Poliovirus, data.Poliovirus, 1, SpawnSide.Left)),
+                W(0.8f, E(prefabs.Herpes, data.Herpes, 1), E(prefabs.Rabia, data.Rabia, 2, SpawnSide.Left)));
             Platform(14f, 2.2f, 3f);
             Platform(22f, 2.2f, 3f);
+            Platform(18f, 4.6f, 2.5f); // más alta: para ver que los enemigos suben y bajan
 
             Arena("Arena_Jefe", 38f, 22f, "Jefe lombriz (versión final)",
                 W(1.0f, E(prefabs.LombrizGrueso, data.Lombriz, 1)));

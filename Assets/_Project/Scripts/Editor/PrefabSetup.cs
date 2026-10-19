@@ -26,6 +26,7 @@ namespace HealingKnight.EditorTools
         public EnemyHealth Rinovirus, Polen, SAureus, Pertussis, Neumococo, Influenza, Tuberculosis;
         public EnemyHealth Mucosidad, Inflamacion, Colmena, RabiaJefe;
         public EnemyHealth Poliovirus, Meningococo, Herpes, Rabia;
+        public EnemyHealth SAureusCoco, OxiuroHuevo;
         public HealthyNeuron Neuron;
         public EnemyHealth RedNeuron;
         public LightningStorm Storm;
@@ -71,6 +72,13 @@ namespace HealingKnight.EditorTools
             Neumococo = Enemy("Bacteria_Neumococo", data.Neumococo, EnemyShape.Diplo);
             Influenza = Enemy("Virus_Influenza", data.Influenza, EnemyShape.Round);
             Tuberculosis = Enemy("Bacteria_Tuberculosis", data.Tuberculosis, EnemyShape.Capsule);
+
+            // Crías: el racimo suelta cocos; el oxiuro deja un huevo y del huevo nace otro oxiuro.
+            SAureusCoco = Enemy("Bacteria_SAureus_Coco", data.SAureusCoco, EnemyShape.Cluster);
+            OxiuroHuevo = Enemy("Parasito_Oxiuro_Huevo", data.OxiuroHuevo, EnemyShape.Egg);
+            LinkChild(data.SAureus, SAureusCoco, data.SAureusCoco);
+            LinkChild(data.Oxiuro, OxiuroHuevo, data.OxiuroHuevo);
+            LinkChild(data.OxiuroHuevo, Oxiuro, data.Oxiuro);
             Mucosidad = LoadOrBuild<EnemyHealth>($"{Folder}/Hazards/Bloqueo_Mucosidad.prefab", () => BuildObstacle("Bloqueo_Mucosidad", data.Mucosidad, true));
             Inflamacion = LoadOrBuild<EnemyHealth>($"{Folder}/Hazards/Bloqueo_Inflamacion.prefab", () => BuildObstacle("Bloqueo_Inflamacion", data.Inflamacion, false));
 
@@ -95,6 +103,14 @@ namespace HealingKnight.EditorTools
             Secret = LoadOrBuild<SecretPassage>($"{Folder}/Level/SecretPassage.prefab", BuildSecret);
 
             Acid = LoadOrBuild<AcidPool>($"{Folder}/Hazards/AcidPool.prefab", BuildAcid);
+        }
+
+        private static void LinkChild(EnemyData parent, EnemyHealth childPrefab, EnemyData childData)
+        {
+            if (parent == null || childPrefab == null) return;
+            parent.childPrefab = childPrefab.gameObject;
+            parent.childData = childData;
+            EditorUtility.SetDirty(parent);
         }
 
         private EnemyHealth Enemy(string name, EnemyData enemyData, EnemyShape shape)
@@ -245,7 +261,7 @@ namespace HealingKnight.EditorTools
 
         // ---------- Enemigos ----------
 
-        private enum EnemyShape { Long, Capsule, Round, Blob, Pear, Cluster, Diplo, Pollen, Bullet }
+        private enum EnemyShape { Long, Capsule, Round, Blob, Pear, Cluster, Diplo, Pollen, Bullet, Egg }
 
         private GameObject BuildEnemy(string name, EnemyData enemyData, EnemyShape shape)
         {
@@ -315,6 +331,13 @@ namespace HealingKnight.EditorTools
                             new Vector3((-0.4f + i * 0.2f) * s, 0.3f * s, 0f), new Vector2(0.12f * s, 0.12f * s), -1);
                     bodySize = new Vector2(1.2f * s, 0.6f * s);
                     break;
+                case EnemyShape.Egg: // huevo de oxiuro: ovalado, aplanado de un lado, con la larva adentro
+                    bodySprite = SetupUtils.SpriteChild(visual.transform, "Body", PlaceholderArt.CircleBottom, enemyData.tint,
+                        Vector3.zero, new Vector2(0.75f * s * 2f, 1.1f * s * 2f), 0);
+                    SetupUtils.SpriteChild(visual.transform, "Larva", PlaceholderArt.Capsule, new Color(0.85f, 0.8f, 0.6f, 0.8f),
+                        new Vector3(0f, 0.5f * s, 0f), new Vector2(0.7f * s, 0.25f * s), 1);
+                    bodySize = new Vector2(0.75f * s * 2f, 1.1f * s * 2f);
+                    break;
                 case EnemyShape.Pollen: // polen: esfera con muchas bolitas
                     bodySprite = SetupUtils.SpriteChild(visual.transform, "Body", PlaceholderArt.Circle, enemyData.tint,
                         Vector3.zero, new Vector2(0.8f * s, 0.8f * s), 0);
@@ -354,7 +377,7 @@ namespace HealingKnight.EditorTools
             var brain = root.AddComponent<EnemyBrain>();
             SetupUtils.SetRef(brain, "data", enemyData);
             SetupUtils.SetRef(brain, "visual", visual.transform);
-            if (enemyData.attackType == EnemyAttackType.Ranged) SetupUtils.SetRef(brain, "projectilePrefab", EnemyProjectile);
+            SetupUtils.SetRef(brain, "projectilePrefab", EnemyProjectile); // varios lanzan algo aunque peleen de cerca (ácido, gotitas)
 
             var hurtbox = root.AddComponent<Hurtbox>();
             Vector2 hurtSize = bodySize + new Vector2(0.15f, 0.15f);

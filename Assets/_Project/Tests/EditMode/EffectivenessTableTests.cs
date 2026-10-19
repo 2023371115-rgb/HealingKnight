@@ -1,4 +1,5 @@
 using HealingKnight.Core.Combat;
+using HealingKnight.Gameplay.Enemies;
 using NUnit.Framework;
 using UnityEngine;
 
@@ -64,6 +65,21 @@ namespace HealingKnight.Tests
             table.Set(ThreatType.Bacteria, antibiotico, Effectiveness.Partial);
             Assert.AreEqual(Effectiveness.Partial, table.Evaluate(ThreatType.Bacteria, antibiotico));
             Assert.AreEqual(3, table.entries.Count);
+        }
+
+        [Test]
+        public void ExcepcionDelEnemigo_GanaSobreLaTabla()
+        {
+            // Giardia: el antibiótico (metronidazol) le es efectivo aunque la tabla diga parcial para parásitos.
+            var giardia = ScriptableObject.CreateInstance<EnemyData>();
+            giardia.threat = ThreatType.Parasito;
+            giardia.weaknesses.Add(new EnemyWeakness { medication = antibiotico, result = Effectiveness.Effective });
+
+            Assert.AreEqual(Effectiveness.Effective, giardia.Evaluate(table, antibiotico));
+            // Lo que no está en sus excepciones sigue la tabla general.
+            Assert.AreEqual(Effectiveness.Effective, giardia.Evaluate(table, antiparasitario));
+            Assert.AreEqual(Effectiveness.Ineffective, giardia.Evaluate(table, antiviral));
+            Object.DestroyImmediate(giardia);
         }
     }
 }

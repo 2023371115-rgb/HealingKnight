@@ -21,6 +21,9 @@ namespace HealingKnight.Gameplay.Combat
         public MedicationData medication; // null en proyectiles enemigos
         public Color color;
         public LayerMask groundMask;     // se destruye al tocar el escenario
+        public float gravity;            // > 0 = cae en arco (ácido, gotitas)
+        public float slowMultiplier;     // > 0 = al pegarle al jugador lo frena (poliovirus)
+        public float slowDuration;
     }
 
     /// <summary>
@@ -43,6 +46,7 @@ namespace HealingKnight.Gameplay.Combat
         private Vector2 bounceVelocity;
         private Action<Projectile> onFinished;
         private bool finished;
+        private Vector2 velocity;
 
         public static event Action<Projectile, HitResult> AnyHit;
 
@@ -71,6 +75,7 @@ namespace HealingKnight.Gameplay.Combat
             shot = data;
             onFinished = finishedCallback;
             travelled = 0f;
+            velocity = data.direction * data.speed;
             bouncing = false;
             finished = false;
 
@@ -107,7 +112,14 @@ namespace HealingKnight.Gameplay.Combat
                 return;
             }
 
-            float step = shot.speed * dt;
+            if (shot.gravity > 0f)
+            {
+                // En arco: cae y gira hacia donde va.
+                velocity += Vector2.down * shot.gravity * dt;
+                shot.direction = velocity.normalized;
+                transform.rotation = Quaternion.Euler(0f, 0f, Mathf.Atan2(velocity.y, velocity.x) * Mathf.Rad2Deg);
+            }
+            float step = (shot.gravity > 0f ? velocity.magnitude : shot.speed) * dt;
             Vector2 previous = transform.position;
             Vector2 next = previous + shot.direction * step;
             transform.position = next;
@@ -125,6 +137,11 @@ namespace HealingKnight.Gameplay.Combat
                 HitResult result = target.Damageable.ApplyDamage(info);
                 AnyHit?.Invoke(this, result);
                 PlayHitSound(result);
+                if (shot.slowMultiplier > 0f && result.Landed)
+                {
+                    Player.PlayerController pc = target.GetComponent<Player.PlayerController>();
+                    if (pc != null) pc.ApplySlow(shot.slowMultiplier, shot.slowDuration);
+                }
 
                 if (result.outcome == HitOutcome.Resisted) StartBounce();
                 else if (result.outcome != HitOutcome.Ignored) Finish();

@@ -26,8 +26,11 @@ namespace HealingKnight.Gameplay.Enemies
 
         public EnemyData Data => data;
 
-        /// <summary>Si es true, ignora todo el daño (jefe bajo tierra, por ejemplo).</summary>
+        /// <summary>Si es true, ignora todo el daño (jefe bajo tierra, por ejemplo). Las cápsulas lo atraviesan.</summary>
         public bool Invulnerable { get; set; }
+
+        /// <summary>Encerrado (espora, granuloma): todo rebota en gris como si fuera ineficaz.</summary>
+        public bool Shelled { get; set; }
 
         /// <summary>La vida no baja de este valor (0..1 de la vida máxima). Lo usa un jefe que huye en vez de morir.</summary>
         public float HealthFloor01 { get; set; }
@@ -80,13 +83,13 @@ namespace HealingKnight.Gameplay.Enemies
                 }
                 else
                 {
-                    effectiveness = effectivenessTable.Evaluate(data.threat, info.medication);
+                    effectiveness = Shelled ? Effectiveness.Ineffective : data.Evaluate(effectivenessTable, info.medication);
                     amount *= effectivenessTable.GetMultiplier(effectiveness);
                 }
             }
             else if (info.kind == DamageKind.Melee)
             {
-                amount *= data.meleeDamageTakenMultiplier;
+                amount *= Shelled ? 0f : data.meleeDamageTakenMultiplier;
             }
 
             if (amount <= 0f)
@@ -123,6 +126,13 @@ namespace HealingKnight.Gameplay.Enemies
         {
             if (data == null || dead) return;
             current = Mathf.Clamp01(value01) * data.maxHealth;
+        }
+
+        /// <summary>Recupera vida (la espora de C. difficile al despertar).</summary>
+        public void Heal(float amount)
+        {
+            if (data == null || dead) return;
+            current = Mathf.Min(data.maxHealth, current + amount);
         }
 
         /// <summary>Muerte forzada (cuando el jefe compuesto ya no tiene partes).</summary>
@@ -180,6 +190,21 @@ namespace HealingKnight.Gameplay.Enemies
             RestoreColors();
             flashRoutine = null;
         }
+
+        /// <summary>Tiñe el cuerpo de forma duradera (espora pálida, granuloma oscuro). amount 0 = color normal.</summary>
+        public void SetTint(Color tint, float amount)
+        {
+            if (originalColors == null) originalColors = (Color[])baseColors.Clone();
+            for (int i = 0; i < flashRenderers.Length; i++)
+            {
+                Color c = Color.Lerp(originalColors[i], tint, amount);
+                c.a = originalColors[i].a;
+                baseColors[i] = c;
+            }
+            if (flashRoutine == null) RestoreColors();
+        }
+
+        private Color[] originalColors;
 
         /// <summary>Lo usa la IA para el aviso antes de atacar.</summary>
         public void SetTelegraph(bool on)

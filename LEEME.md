@@ -47,6 +47,31 @@ Los controles se definen en `Scripts/Gameplay/Player/PlayerInputReader.cs`.
 
 ---
 
+## Enemigos: comportamiento y biología
+
+Cada enemigo tiene un comportamiento (`behavior` en su EnemyData) basado en su microorganismo, y puede tener **debilidades propias** (`weaknesses`) que ganan sobre la tabla general. Los de suelo bajan de las plataformas si estás abajo y saltan para subir si estás arriba; si no te alcanzan, patrullan. En el Sandbox, la arena "Arena_Enemigos" trae una oleada por comportamiento para probarlos.
+
+| Enemigo | Cómo pelea | Por qué (biología) | Debilidad |
+|---|---|---|---|
+| H. pylori | Se entierra (inmune), avanza escondido y sale debajo de ti | Se entierra en el moco del estómago para que el ácido no la mate | Antibiótico |
+| Giardia | Salta y se te pega: te frena y te daña; un disparo la despega | Disco ventral con el que se pega al intestino | Antiparasitario **y** Antibiótico (metronidazol es las dos cosas) |
+| Rotavirus | Rueda sin parar, se pasa de largo y rebota | "Rota" = rueda: así se ve al microscopio | Antiviral |
+| Entamoeba | Seudópodo largo que te jala | Fagocitosis: engulle células | Antiparasitario |
+| C. difficile | Herida se vuelve espora (todo rebota) y despierta | Sus esporas resisten antibióticos y calor | Solo Antibiótico |
+| Oxiuro | Rápido, culebrea; al morir deja un huevo que eclosiona | Autoinfección con sus huevos | Antiparasitario |
+| S. mutans | Lanza ácido en arco desde lejos | Ácido láctico que causa la caries | Antibiótico |
+| Rinovirus | Vuelo errático, estornuda en abanico; se cura solo | No existe antiviral para el resfriado | Todo le hace poco (Antiviral parcial) |
+| Polen | Lo lleva el aire; cerca revienta y te frena | Alérgeno: histamina | Antihistamínico |
+| S. aureus | Al morir se separa en 2 cocos | Racimo de uvas (staphylé) | Antibiótico |
+| B. pertussis | Se infla y tose 3 veces; cada tos empuja | Ataques de tos ferina | Antibiótico |
+| Neumococo | Avanza a saltos y te cae encima | Diplococo que llega en gotitas | Antibiótico |
+| Influenza | Se lanza en picada | Espículas con las que se clava | Antiviral (oseltamivir) |
+| Tuberculosis | Lenta y dura; de lejos tose gotitas en arco; se encierra en granuloma | Pared cerosa; granulomas | Solo Antibiótico |
+| Meningococo | Se agazapa y cruza a toda velocidad | Infección rapidísima | Antibiótico |
+| Poliovirus | Sus disparos te paralizan (lento) | Ataca neuronas motoras | Antiviral |
+| Herpes | Se vuelve latente (invisible), reaparece y dispara en ráfaga | Latencia en ganglios nerviosos | Antiviral (aciclovir) |
+| Rabia (suelta) | Muerde 3 veces seguidas | Vuelve agresivo al infectado | **Anticonvulsivo** (sedar el cerebro); Antiviral parcial |
+
 ## Sonido (experimento)
 
 Todos los sonidos viven en `Assets/_Project/Audio/Resources/SFX` y el juego los busca **por nombre de archivo**: para cambiar uno, reemplaza el archivo con el mismo nombre (`.ogg` de preferencia; los `.wav` van por Git LFS). No hay que tocar código ni regenerar. Los actuales son de prueba, sintetizados con `Tools/Audio/generar_sonidos.py` (ahí está explicado cómo hacer más). Los volúmenes por grupo están en `Data/Resources/CombatAudio`.

@@ -18,6 +18,7 @@ namespace HealingKnight.EditorTools
         public EnemyData HPylori, Giardia, Rotavirus, Entamoeba, CDifficile, Oxiuro, SMutans, Lombriz;
         public EnemyData Rinovirus, Polen, SAureus, Pertussis, Neumococo, Influenza, Tuberculosis;
         public EnemyData Mucosidad, Inflamacion, Colmena;
+        public EnemyData SAureusCoco, OxiuroHuevo;
         public EnemyData Poliovirus, Meningococo, Herpes, Rabia, NeuronaHiperexcitada, RabiaJefe, RabiaVirion;
         public GameCatalog Catalog;
         public LevelData DigestivoEstomago, DigestivoDelgado, DigestivoGrueso, DigestivoBoca;
@@ -33,6 +34,7 @@ namespace HealingKnight.EditorTools
             CreateEnemies();
             CreateRespiratoryEnemies();
             CreateNervousEnemies();
+            CreateOffspring();
             CreateCatalog();
         }
 
@@ -175,8 +177,12 @@ namespace HealingKnight.EditorTools
             {
                 e.displayName = "H. pylori";
                 e.threat = ThreatType.Bacteria;
-                e.maxHealth = 20f; e.moveSpeed = 3f;
+                e.behavior = EnemyBehavior.Burrower;
+                e.biologia = "Bacteria en espiral con flagelos: se entierra en la capa de moco del estómago para que el ácido no la mate. " +
+                    "En el juego se mete bajo la mucosa (no la puedes dañar) y sale debajo de ti.";
+                e.maxHealth = 22f; e.moveSpeed = 2.6f;
                 e.attackDistance = 1f; e.attackWindup = 0.35f; e.attackDamage = 10f;
+                e.specialCooldown = 4.5f;
                 e.tint = new Color(0.5f, 0.85f, 0.4f);
             });
 
@@ -184,8 +190,12 @@ namespace HealingKnight.EditorTools
             {
                 e.displayName = "Giardia";
                 e.threat = ThreatType.Parasito;
-                e.maxHealth = 22f; e.moveSpeed = 3.2f;
-                e.attackDistance = 1f; e.attackWindup = 0.35f; e.attackDamage = 8f;
+                e.behavior = EnemyBehavior.Latcher;
+                e.biologia = "Protozoo con forma de pera y un disco ventral con el que se pega a la pared del intestino. " +
+                    "Se trata con metronidazol, que es antiparasitario Y antibiótico: por eso el antibiótico también le sirve.";
+                e.weaknesses.Add(new EnemyWeakness { medication = Antibiotico, result = Effectiveness.Effective });
+                e.maxHealth = 22f; e.moveSpeed = 3f;
+                e.attackDistance = 2.8f; e.attackWindup = 0.35f; e.attackCooldown = 2f; e.attackDamage = 8f;
                 e.tint = new Color(0.95f, 0.85f, 0.55f);
             });
 
@@ -193,11 +203,13 @@ namespace HealingKnight.EditorTools
             {
                 e.displayName = "Rotavirus";
                 e.threat = ThreatType.Virus;
-                e.maxHealth = 20f; e.moveSpeed = 2f;
-                e.movement = EnemyMovement.Flying; e.flyHeight = 2.6f;
-                e.attackType = EnemyAttackType.Ranged;
-                e.attackDistance = 5.5f; e.attackWindup = 0.4f; e.attackCooldown = 2.5f; e.attackDamage = 10f;
-                e.projectileColor = new Color(0.8f, 0.5f, 1f);
+                e.behavior = EnemyBehavior.Roller;
+                e.biologia = "Su nombre viene de 'rota' (rueda en latín): al microscopio parece una rueda. " +
+                    "En el juego rueda sin parar, se pasa de largo, rebota y regresa.";
+                e.movement = EnemyMovement.Ground;
+                e.maxHealth = 22f; e.moveSpeed = 4.2f; e.jumpHeight = 3f;
+                e.attackDamage = 10f; e.attackKnockback = 5f;
+                e.knockbackResistance = 0.5f;
                 e.tint = new Color(0.75f, 0.45f, 0.95f);
             });
 
@@ -205,9 +217,12 @@ namespace HealingKnight.EditorTools
             {
                 e.displayName = "Entamoeba (ameba)";
                 e.threat = ThreatType.Parasito;
+                e.behavior = EnemyBehavior.Engulfer;
+                e.biologia = "Ameba: estira seudópodos y engulle lo que encuentra (fagocitosis), hasta glóbulos rojos. " +
+                    "Su seudópodo llega lejos y te jala hacia ella.";
                 e.maxHealth = 50f; e.moveSpeed = 1.4f;
-                e.attackDistance = 1.4f; e.attackWindup = 0.6f; e.attackDamage = 15f; e.attackKnockback = 6f;
-                e.knockbackResistance = 0.6f; e.linfocitoCharge = 2;
+                e.attackDistance = 2.4f; e.attackWindup = 0.6f; e.attackCooldown = 1.8f; e.attackDamage = 14f;
+                e.knockbackResistance = 0.6f; e.linfocitoCharge = 2; e.jumpHeight = 2.2f;
                 e.tint = new Color(0.8f, 0.6f, 0.75f);
                 e.visualScale = 1.4f;
             });
@@ -216,8 +231,14 @@ namespace HealingKnight.EditorTools
             {
                 e.displayName = "C. difficile";
                 e.threat = ThreatType.Bacteria;
-                e.maxHealth = 28f; e.moveSpeed = 2.6f;
+                e.behavior = EnemyBehavior.Sporer;
+                e.biologia = "Forma esporas que aguantan antibióticos, calor y desinfectantes; aparece cuando los antibióticos " +
+                    "acaban con la flora buena. Herida, se vuelve espora (todo rebota) y luego despierta. Solo su antibiótico la daña.";
+                e.weaknesses.Add(new EnemyWeakness { medication = Antiinflamatorio, result = Effectiveness.Ineffective });
+                e.weaknesses.Add(new EnemyWeakness { medication = Antiparasitario, result = Effectiveness.Ineffective });
+                e.maxHealth = 30f; e.moveSpeed = 2.4f;
                 e.attackDistance = 1.1f; e.attackWindup = 0.4f; e.attackDamage = 12f;
+                e.specialCooldown = 7f; e.specialDuration = 3f;
                 e.tint = new Color(0.45f, 0.65f, 0.35f);
                 e.visualScale = 1.1f;
             });
@@ -226,8 +247,12 @@ namespace HealingKnight.EditorTools
             {
                 e.displayName = "Oxiuro";
                 e.threat = ThreatType.Parasito;
-                e.maxHealth = 14f; e.moveSpeed = 3.5f;
+                e.behavior = EnemyBehavior.Breeder;
+                e.biologia = "Lombriz pequeña y rápida. Pone huevos que vuelven a infectar a la misma persona (autoinfección): " +
+                    "al morir deja un huevo; rómpelo antes de que eclosione.";
+                e.maxHealth = 14f; e.moveSpeed = 3.6f;
                 e.attackDistance = 0.9f; e.attackWindup = 0.3f; e.attackDamage = 6f;
+                e.childCount = 1;
                 e.tint = new Color(0.97f, 0.95f, 0.88f);
                 e.visualScale = 0.8f;
             });
@@ -236,8 +261,13 @@ namespace HealingKnight.EditorTools
             {
                 e.displayName = "S. mutans (caries)";
                 e.threat = ThreatType.Bacteria;
-                e.maxHealth = 18f; e.moveSpeed = 2.8f;
-                e.attackDistance = 1f; e.attackWindup = 0.35f; e.attackDamage = 8f;
+                e.behavior = EnemyBehavior.Lobber;
+                e.biologia = "Vive en la placa dental: fermenta el azúcar y suelta ácido láctico que disuelve el esmalte (caries). " +
+                    "Se queda lejos y te lanza ácido en arco; te alcanza aunque estés en una plataforma.";
+                e.maxHealth = 18f; e.moveSpeed = 2.2f;
+                e.attackDistance = 4.5f; e.attackWindup = 0.5f; e.attackCooldown = 2.2f; e.attackDamage = 8f;
+                e.projectileGravity = 14f; e.projectileSpeed = 6f;
+                e.projectileColor = new Color(1f, 0.95f, 0.45f);
                 e.tint = new Color(0.85f, 0.85f, 0.55f);
             });
 
@@ -254,6 +284,36 @@ namespace HealingKnight.EditorTools
             });
         }
 
+        private void CreateOffspring()
+        {
+            // Crías: lo que suelta el racimo de estafilococo y el huevo del oxiuro (las conecta PrefabSetup).
+            SAureusCoco = Enemy("Bacteria_SAureus_Coco", e =>
+            {
+                e.displayName = "S. aureus (coco suelto)";
+                e.threat = ThreatType.Bacteria;
+                e.behavior = EnemyBehavior.Walker;
+                e.biologia = "Un coco que se separó del racimo: pequeño, rápido y débil.";
+                e.maxHealth = 8f; e.moveSpeed = 3.4f; e.jumpHeight = 2.6f;
+                e.attackDistance = 0.8f; e.attackWindup = 0.3f; e.attackDamage = 6f;
+                e.tint = new Color(1f, 0.85f, 0.4f);
+                e.visualScale = 0.55f;
+            });
+
+            OxiuroHuevo = Enemy("Parasito_Oxiuro_Huevo", e =>
+            {
+                e.displayName = "Huevo de oxiuro";
+                e.threat = ThreatType.Parasito;
+                e.behavior = EnemyBehavior.Egg;
+                e.biologia = "Los huevos del oxiuro maduran en horas y reinfectan. Si no lo rompes, eclosiona otro oxiuro.";
+                e.maxHealth = 6f; e.moveSpeed = 0f; e.jumpHeight = 0f;
+                e.specialDuration = 4.5f;
+                e.meleeDamageTakenMultiplier = 2f;
+                e.knockbackResistance = 1f; e.hurtStunTime = 0f; e.linfocitoCharge = 0;
+                e.tint = new Color(0.98f, 0.96f, 0.85f);
+                e.visualScale = 0.5f;
+            });
+        }
+
         private void CreateRespiratoryEnemies()
         {
             // Sistema Respiratorio: patógenos reales de cada zona (GDD 5.11: bacterias en grupo y virus que flotan y disparan).
@@ -261,21 +321,32 @@ namespace HealingKnight.EditorTools
             {
                 e.displayName = "Rinovirus (resfriado)";
                 e.threat = ThreatType.Virus;
+                e.behavior = EnemyBehavior.Spreader;
+                e.biologia = "Causa el resfriado común. No existe un antiviral para él: se cura solo cuando tu sistema inmune lo elimina. " +
+                    "Por eso los medicamentos le hacen poco y desaparece solo después de un rato. Estornuda en abanico.";
+                e.weaknesses.Add(new EnemyWeakness { medication = Antiviral, result = Effectiveness.Partial });
+                e.weaknesses.Add(new EnemyWeakness { medication = Antihistaminico, result = Effectiveness.Partial });
                 e.movement = EnemyMovement.Flying; e.flyHeight = 2.4f;
-                e.maxHealth = 20f; e.moveSpeed = 2f;
+                e.maxHealth = 12f; e.moveSpeed = 2.2f; e.lifetime = 14f;
                 e.attackType = EnemyAttackType.Ranged;
-                e.attackDistance = 5f; e.attackWindup = 0.4f; e.attackCooldown = 2.5f; e.attackDamage = 10f;
+                e.attackDistance = 5f; e.attackWindup = 0.45f; e.attackCooldown = 2.8f; e.attackDamage = 6f;
+                e.spreadShots = 3; e.spreadDegrees = 30f; e.projectileSpeed = 5.5f;
                 e.projectileColor = new Color(0.75f, 1f, 0.55f);
                 e.tint = new Color(0.6f, 0.9f, 0.45f);
+                e.visualScale = 0.8f;
             });
 
             Polen = Enemy("Alergeno_Polen", e =>
             {
                 e.displayName = "Polen (alérgeno)";
                 e.threat = ThreatType.Alergeno;
+                e.behavior = EnemyBehavior.Drifter;
+                e.biologia = "No es un microbio: es un alérgeno. Lo lleva el aire y tu cuerpo reacciona soltando histamina " +
+                    "(estornudos, comezón). Flota en ondas y, si te alcanza, revienta y te deja lento un rato.";
                 e.movement = EnemyMovement.Flying; e.flyHeight = 0.9f;
-                e.maxHealth = 14f; e.moveSpeed = 1.8f;
-                e.attackDistance = 1f; e.attackWindup = 0.5f; e.attackCooldown = 1.8f; e.attackDamage = 6f; e.attackKnockback = 3f;
+                e.maxHealth = 10f; e.moveSpeed = 1.4f;
+                e.attackWindup = 0.45f; e.attackDamage = 6f; e.attackKnockback = 3f;
+                e.slowOnHit = 0.55f; e.slowDuration = 2f;
                 e.tint = new Color(1f, 0.85f, 0.25f);
                 e.visualScale = 0.75f;
             });
@@ -284,8 +355,11 @@ namespace HealingKnight.EditorTools
             {
                 e.displayName = "S. aureus";
                 e.threat = ThreatType.Bacteria;
-                e.maxHealth = 20f; e.moveSpeed = 3f;
+                e.behavior = EnemyBehavior.Splitter;
+                e.biologia = "Cocos agrupados en racimos de uvas ('staphylé' = racimo en griego). Al romper el racimo, los cocos siguen solos.";
+                e.maxHealth = 24f; e.moveSpeed = 2.8f;
                 e.attackDistance = 1f; e.attackWindup = 0.35f; e.attackDamage = 10f;
+                e.childCount = 2;
                 e.tint = new Color(0.95f, 0.8f, 0.35f);
             });
 
@@ -293,8 +367,11 @@ namespace HealingKnight.EditorTools
             {
                 e.displayName = "B. pertussis (tos ferina)";
                 e.threat = ThreatType.Bacteria;
-                e.maxHealth = 24f; e.moveSpeed = 3.2f;
-                e.attackDistance = 1.1f; e.attackWindup = 0.35f; e.attackDamage = 10f; e.attackKnockback = 6f;
+                e.behavior = EnemyBehavior.Cougher;
+                e.biologia = "Su toxina paraliza los cilios de la tráquea y provoca ataques de tos en ráfaga. " +
+                    "Toma aire (se infla) y tose tres veces: cada tos empuja lejos.";
+                e.maxHealth = 26f; e.moveSpeed = 2.6f;
+                e.attackDistance = 1.8f; e.attackWindup = 0.7f; e.attackCooldown = 2.4f; e.attackDamage = 12f; e.attackKnockback = 7f;
                 e.tint = new Color(0.55f, 0.75f, 0.95f);
             });
 
@@ -302,8 +379,11 @@ namespace HealingKnight.EditorTools
             {
                 e.displayName = "S. pneumoniae (neumonía)";
                 e.threat = ThreatType.Bacteria;
-                e.maxHealth = 20f; e.moveSpeed = 3.3f; e.aggroRange = 16f;
-                e.attackDistance = 1f; e.attackWindup = 0.3f; e.attackDamage = 10f;
+                e.behavior = EnemyBehavior.Hopper;
+                e.biologia = "Diplococo (dos cocos pegados) con cápsula. Llega en las gotitas de saliva y en grupo a los alvéolos: " +
+                    "avanza a saltos y te cae encima.";
+                e.maxHealth = 18f; e.moveSpeed = 3.2f; e.aggroRange = 16f; e.jumpHeight = 3.6f;
+                e.attackDamage = 9f; e.attackKnockback = 4f;
                 e.tint = new Color(0.45f, 0.85f, 0.75f);
                 e.visualScale = 0.9f;
             });
@@ -312,12 +392,12 @@ namespace HealingKnight.EditorTools
             {
                 e.displayName = "Influenza";
                 e.threat = ThreatType.Virus;
-                e.movement = EnemyMovement.Flying; e.flyHeight = 2.8f;
-                e.maxHealth = 24f; e.moveSpeed = 2.2f;
-                e.attackType = EnemyAttackType.Ranged;
-                e.attackDistance = 5.5f; e.attackWindup = 0.4f; e.attackCooldown = 2.2f; e.attackDamage = 10f;
-                e.projectileSpeed = 8f;
-                e.projectileColor = new Color(0.6f, 0.8f, 1f);
+                e.behavior = EnemyBehavior.Diver;
+                e.biologia = "Cubierta de espículas (hemaglutinina y neuraminidasa) con las que se clava en las células. " +
+                    "Flota alto y se lanza en picada. El antiviral sí funciona (oseltamivir).";
+                e.movement = EnemyMovement.Flying; e.flyHeight = 3.5f;
+                e.maxHealth = 24f; e.moveSpeed = 2.6f;
+                e.attackWindup = 0.55f; e.attackCooldown = 2.6f; e.attackDamage = 12f; e.attackKnockback = 5f;
                 e.tint = new Color(0.55f, 0.65f, 1f);
                 e.visualScale = 1.1f;
             });
@@ -326,9 +406,18 @@ namespace HealingKnight.EditorTools
             {
                 e.displayName = "M. tuberculosis (resistente)";
                 e.threat = ThreatType.Bacteria;
-                e.maxHealth = 70f; e.moveSpeed = 1.4f;
-                e.attackDistance = 1.4f; e.attackWindup = 0.6f; e.attackDamage = 15f; e.attackKnockback = 6f;
-                e.knockbackResistance = 0.7f; e.linfocitoCharge = 3;
+                e.behavior = EnemyBehavior.Tank;
+                e.biologia = "Pared gruesa y cerosa (ácido micólico): solo la daña su antibiótico. El cuerpo la encierra en granulomas " +
+                    "(se vuelve dura un rato) y de lejos tose gotitas que contagian.";
+                e.weaknesses.Add(new EnemyWeakness { medication = Antiinflamatorio, result = Effectiveness.Ineffective });
+                e.weaknesses.Add(new EnemyWeakness { medication = Mucolitico, result = Effectiveness.Ineffective });
+                e.weaknesses.Add(new EnemyWeakness { medication = Antiparasitario, result = Effectiveness.Ineffective });
+                e.maxHealth = 80f; e.moveSpeed = 1.2f; e.jumpHeight = 2f;
+                e.attackDistance = 1.4f; e.attackWindup = 0.6f; e.attackCooldown = 2.2f; e.attackDamage = 15f; e.attackKnockback = 6f;
+                e.projectileGravity = 12f; e.spreadShots = 3; e.spreadDegrees = 20f;
+                e.projectileColor = new Color(0.85f, 0.75f, 0.6f);
+                e.specialCooldown = 8f; e.specialDuration = 2.5f;
+                e.knockbackResistance = 0.75f; e.linfocitoCharge = 3;
                 e.tint = new Color(0.75f, 0.55f, 0.45f);
                 e.visualScale = 1.4f;
             });
@@ -374,10 +463,13 @@ namespace HealingKnight.EditorTools
             {
                 e.displayName = "Poliovirus";
                 e.threat = ThreatType.Virus;
+                e.behavior = EnemyBehavior.Paralyzer;
+                e.biologia = "Ataca las neuronas motoras de la médula espinal y causa parálisis. Sus disparos te dejan lento un momento.";
                 e.movement = EnemyMovement.Flying; e.flyHeight = 2.2f;
                 e.maxHealth = 18f; e.moveSpeed = 2.4f;
                 e.attackType = EnemyAttackType.Ranged;
-                e.attackDistance = 5f; e.attackWindup = 0.4f; e.attackCooldown = 2.4f; e.attackDamage = 10f;
+                e.attackDistance = 5f; e.attackWindup = 0.4f; e.attackCooldown = 2.4f; e.attackDamage = 8f;
+                e.slowOnHit = 0.5f; e.slowDuration = 1.6f;
                 e.projectileColor = new Color(0.6f, 0.9f, 1f);
                 e.tint = new Color(0.4f, 0.8f, 0.95f);
                 e.visualScale = 0.85f;
@@ -387,8 +479,11 @@ namespace HealingKnight.EditorTools
             {
                 e.displayName = "N. meningitidis (meningitis)";
                 e.threat = ThreatType.Bacteria;
-                e.maxHealth = 22f; e.moveSpeed = 3.2f;
-                e.attackDistance = 1f; e.attackWindup = 0.35f; e.attackDamage = 10f;
+                e.behavior = EnemyBehavior.Charger;
+                e.biologia = "Diplococo que pasa a la sangre y a las meninges en pocas horas: de las infecciones más rápidas que hay. " +
+                    "Se agazapa y cruza a toda velocidad.";
+                e.maxHealth = 22f; e.moveSpeed = 3f;
+                e.attackDistance = 4f; e.attackWindup = 0.55f; e.attackCooldown = 2.2f; e.attackDamage = 12f; e.attackKnockback = 6f;
                 e.tint = new Color(0.95f, 0.45f, 0.65f);
             });
 
@@ -396,10 +491,15 @@ namespace HealingKnight.EditorTools
             {
                 e.displayName = "Herpes simple (encefalitis)";
                 e.threat = ThreatType.Virus;
+                e.behavior = EnemyBehavior.Latent;
+                e.biologia = "Se esconde latente en los ganglios nerviosos, donde el sistema inmune no lo ve, y se reactiva. " +
+                    "Se vuelve invisible e inmune, se acomoda y reaparece disparando en ráfaga. Antiviral: el aciclovir.";
+                e.weaknesses.Add(new EnemyWeakness { medication = Antiinflamatorio, result = Effectiveness.Ineffective });
                 e.movement = EnemyMovement.Flying; e.flyHeight = 3f;
-                e.maxHealth = 30f; e.moveSpeed = 1.8f;
+                e.maxHealth = 30f; e.moveSpeed = 2f;
                 e.attackType = EnemyAttackType.Ranged;
-                e.attackDistance = 6f; e.attackWindup = 0.45f; e.attackCooldown = 2.2f; e.attackDamage = 12f;
+                e.attackDistance = 5.5f; e.attackWindup = 0.45f; e.attackCooldown = 2.6f; e.attackDamage = 8f;
+                e.burstCount = 3; e.specialCooldown = 6f; e.specialDuration = 2.2f;
                 e.projectileSpeed = 7.5f;
                 e.projectileColor = new Color(1f, 0.55f, 0.9f);
                 e.tint = new Color(0.85f, 0.4f, 0.95f);
@@ -443,9 +543,15 @@ namespace HealingKnight.EditorTools
             {
                 e.displayName = "Virus de la rabia";
                 e.threat = ThreatType.Virus;
+                e.behavior = EnemyBehavior.Frenzy;
+                e.biologia = "Viaja por los nervios hasta el cerebro y vuelve agresivo al que infecta: muerde varias veces seguidas. " +
+                    "Con síntomas, los antivirales casi no sirven; lo que se intenta es calmar el cerebro con sedantes " +
+                    "(protocolo de Milwaukee). Por eso el Anticonvulsivo es su debilidad.";
+                e.weaknesses.Add(new EnemyWeakness { medication = Antiviral, result = Effectiveness.Partial });
+                e.weaknesses.Add(new EnemyWeakness { medication = Anticonvulsivo, result = Effectiveness.Effective });
                 e.movement = EnemyMovement.Flying; e.flyHeight = 1f;
-                e.maxHealth = 20f; e.moveSpeed = 3.2f;
-                e.attackDistance = 1.2f; e.attackWindup = 0.35f; e.attackCooldown = 1.4f; e.attackDamage = 12f; e.attackKnockback = 5f;
+                e.maxHealth = 16f; e.moveSpeed = 3.6f;
+                e.attackDistance = 1.2f; e.attackWindup = 0.3f; e.attackCooldown = 1.8f; e.attackDamage = 8f; e.attackKnockback = 3f;
                 e.tint = new Color(0.95f, 0.85f, 0.4f);
             });
         }
