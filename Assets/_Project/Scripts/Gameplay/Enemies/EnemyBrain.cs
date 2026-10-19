@@ -61,13 +61,26 @@ namespace HealingKnight.Gameplay.Enemies
         private int burstLeft;
         private float burstTimer;
         private Vector2 lockedTarget;
-        private int rollDirection;
         private float wanderDirection = 1f;
         private float fade = 1f;
         private float fadeTarget = 1f;
         private Vector2 shape = Vector2.one;   // estirar/aplastar el dibujo (se aplica en LateUpdate)
         private float spin;                    // rotación del dibujo (rotavirus rodando)
         private bool rangedAttack;             // el ataque en curso es disparo/lanzamiento
+
+        // Movimiento con inercia y "vida" en el dibujo.
+        private Vector2 vel;                   // velocidad actual (acelera y frena, no cambia de golpe)
+        private Vector2 lastPosition;
+        private Vector2 frameVelocity;         // lo que de verdad se movió este cuadro (para inclinarse)
+        private float walkPhase;
+        private float landSquash;
+        private bool wasGrounded = true;
+        private float spinSpeed;               // rueda del rotavirus: grados por segundo
+        private Vector2 launchVelocity;
+        private int bounces;
+
+        private const float GroundAcceleration = 38f;
+        private const float AirAcceleration = 16f;
 
         // Giardia pegada al jugador.
         private PlayerController latchedTo;
@@ -91,7 +104,7 @@ namespace HealingKnight.Gameplay.Enemies
             health = GetComponent<EnemyHealth>();
             attackCooldown = Random.Range(0.4f, 1.2f);
             bobPhase = Random.value * 10f;
-            rollDirection = Random.value < 0.5f ? -1 : 1;
+            lastPosition = transform.position;
             if (visual == null && motor != null) visual = motor.Visual;
             if (visual != null) visualBaseScale = new Vector3(Mathf.Abs(visual.localScale.x), visual.localScale.y, visual.localScale.z);
 
@@ -198,7 +211,7 @@ namespace HealingKnight.Gameplay.Enemies
                 case State.Hurt:
                     timer -= dt;
                     knockbackVelocity = Mathf.MoveTowards(knockbackVelocity, 0f, 20f * dt);
-                    Move(new Vector2(knockbackVelocity, 0f));
+                    Move(new Vector2(knockbackVelocity, 0f), true);
                     if (timer <= 0f) state = State.Approach;
                     break;
 
@@ -223,26 +236,83 @@ namespace HealingKnight.Gameplay.Enemies
                 }
             }
 
+            float dt = Mathf.Max(Time.deltaTime, 0.0001f);
+            frameVelocity = ((Vector2)transform.position - lastPosition) / dt;
+            lastPosition = transform.position;
             if (visual == null || state == State.Dead) return;
+
+            Vector2 juice = Vector2.one;
+            float lean;
+            if (motor != null)
+            {
+                // Pasos: rebota al caminar; se estira al subir y se aplasta al caer al piso.
+                bool grounded = motor.IsGrounded;
+                float speedX = Mathf.Abs(frameVelocity.x);
+                if (grounded && speedX > 0.3f)
+                {
+                    walkPhase += speedX * 5.5f * dt;
+                    float step = Mathf.Abs(Mathf.Sin(walkPhase));
+                    juice = new Vector2(1f + step * 0.06f, 1f - step * 0.08f);
+                }
+                else if (grounded)
+                {
+                    float breathe = Mathf.Sin(age * 3f + bobPhase) * 0.035f; // respira quieto
+                    juice = new Vector2(1f - breathe, 1f + breathe);
+                }
+                else
+                {
+                    float vy = Mathf.Clamp(motor.Velocity.y / 12f, -1f, 1f);
+                    juice = new Vector2(1f - Mathf.Abs(vy) * 0.12f, 1f + Mathf.Abs(vy) * 0.16f);
+                }
+                if (grounded && !wasGrounded) landSquash = 1f;
+                wasGrounded = grounded;
+                lean = Mathf.Clamp(-frameVelocity.x * 1.6f, -9f, 9f);
+            }
+            else
+            {
+                // Voladores: laten y se inclinan hacia donde van.
+                float pulse = Mathf.Sin(age * 3.4f + bobPhase) * 0.045f;
+                juice = new Vector2(1f + pulse, 1f - pulse);
+                lean = Mathf.Clamp(-frameVelocity.x * 3.2f, -22f, 22f);
+            }
+
+            if (landSquash > 0f)
+            {
+                landSquash = Mathf.MoveTowards(landSquash, 0f, dt * 6f);
+                juice = new Vector2(juice.x * (1f + landSquash * 0.25f), juice.y * (1f - landSquash * 0.22f));
+            }
+
             float sign = visual.localScale.x < 0f ? -1f : 1f;
-            visual.localScale = new Vector3(visualBaseScale.x * sign * shape.x, visualBaseScale.y * shape.y, visualBaseScale.z);
-            if (spin != 0f) visual.localRotation = Quaternion.Euler(0f, 0f, spin);
+            Vector2 final = new Vector2(shape.x * juice.x, shape.y * juice.y);
+            visual.localScale = new Vector3(visualBaseScale.x * sign * final.x, visualBaseScale.y * final.y, visualBaseScale.z);
+
+            float currentZ = visual.localEulerAngles.z;
+            float z = spin != 0f ? spin : Mathf.LerpAngle(currentZ, lean, dt * 10f);
+            visual.localRotation = Quaternion.Euler(0f, 0f, z);
         }
 
         // ================================================================ moverse
 
-        private void Move(Vector2 velocity)
+        /// <summary>
+        /// Mueve con inercia: acelera y frena en vez de arrancar y parar en seco (se siente más vivo).
+        /// 'instant' = sin inercia (empujones al recibir un golpe).
+        /// </summary>
+        private void Move(Vector2 velocity, bool instant = false)
         {
+            float dt = Time.deltaTime;
             if (motor != null)
             {
-                motor.SetHorizontalVelocity(velocity.x);
+                float accel = motor.IsGrounded ? GroundAcceleration : AirAcceleration;
+                vel.x = instant ? velocity.x : Mathf.MoveTowards(motor.Velocity.x, velocity.x, accel * dt);
+                motor.SetHorizontalVelocity(vel.x);
             }
             else
             {
-                // Volador: se mueve directo, con un vaivén suave.
-                bobPhase += Time.deltaTime * 2.5f;
+                // Volador: gira suave hacia donde quiere ir, con un vaivén.
+                vel = instant ? velocity : Vector2.MoveTowards(vel, velocity, AirAcceleration * 1.4f * dt);
+                bobPhase += dt * 2.5f;
                 Vector2 bob = new Vector2(0f, Mathf.Sin(bobPhase) * 0.6f);
-                transform.position += (Vector3)((velocity + bob) * Time.deltaTime);
+                transform.position += (Vector3)((vel + bob) * dt);
             }
         }
 
@@ -287,7 +357,7 @@ namespace HealingKnight.Gameplay.Enemies
             if (playerAbove || playerBelow) desiredX = player.Position.x; // ir justo abajo/arriba para cambiar de piso
 
             float dx = desiredX - me.x;
-            float vx = Mathf.Abs(dx) > 0.2f ? Mathf.Sign(dx) * speed : 0f;
+            float vx = Mathf.Abs(dx) > 0.15f ? Mathf.Clamp(dx * 4f, -speed, speed) : 0f; // llega frenando, no en seco
 
             if (playerBelow && Mathf.Abs(dx) < 1.5f) vx = wanderDirection * speed;              // busca una orilla para bajar
             else if (playerAbove && !canClimb && Mathf.Abs(dx) < 1.5f) vx = wanderDirection * speed * 0.4f; // no alcanza: ronda
@@ -345,11 +415,11 @@ namespace HealingKnight.Gameplay.Enemies
             switch (Behavior)
             {
                 case EnemyBehavior.Hopper: ApproachHopper(player); return;
-                case EnemyBehavior.Roller: ApproachRoller(player); return;
                 case EnemyBehavior.Drifter: ApproachDrifter(player, dt); return;
             }
 
             bool hasToken = AttackTokens.TryAcquire(this);
+            if (Behavior == EnemyBehavior.Roller) { ApproachWheel(player, hasToken); return; }
             if (Behavior == EnemyBehavior.Diver) { ApproachFlying(player, hasToken, data.flyHeight, 1.5f); return; }
             if (Behavior == EnemyBehavior.Frenzy) { ApproachFlying(player, hasToken, 0.8f, data.attackDistance); return; }
             if (IsFlying)
@@ -390,9 +460,9 @@ namespace HealingKnight.Gameplay.Enemies
 
             float desired = hasToken ? distance : Mathf.Max(distance, waitDistance);
             Vector2 goal = new Vector2(target.x + side * desired, target.y + height);
-            Vector2 velocity = Vector2.zero;
-            if (Mathf.Abs(goal.x - me.x) > 0.2f) velocity.x = Mathf.Sign(goal.x - me.x) * data.moveSpeed;
-            if (Mathf.Abs(goal.y - me.y) > 0.2f) velocity.y = Mathf.Sign(goal.y - me.y) * data.moveSpeed * 0.7f;
+            // Llega frenando y rodea un poco (no se queda clavado en un punto).
+            goal += new Vector2(Mathf.Sin(age * 0.9f + bobPhase) * 1.2f, Mathf.Sin(age * 1.7f + bobPhase) * 0.5f);
+            Vector2 velocity = Vector2.ClampMagnitude((goal - me) * 2.6f, data.moveSpeed);
 
             if (Behavior == EnemyBehavior.Spreader)
             {
@@ -431,39 +501,69 @@ namespace HealingKnight.Gameplay.Enemies
             float height = dy > 1.2f ? Mathf.Clamp(dy + 1f, 1.5f, data.jumpHeight + 0.6f) : Random.Range(1.1f, 2f);
             if (!GroundAhead(dir) && !(dy < -1.2f && SafeDrop(dir))) dir = -dir;
             motor.Jump(height, 0.36f);
-            Move(new Vector2(dir * data.moveSpeed * 1.4f, 0f));
+            Move(new Vector2(dir * data.moveSpeed * 1.4f, 0f), true); // el salto sale disparado
             jumpCooldown = Random.Range(0.45f, 0.75f);
         }
 
-        /// <summary>Rotavirus: rueda sin parar; se pasa de largo y regresa, rebota en las paredes.</summary>
-        private void ApproachRoller(PlayerController player)
+        /// <summary>
+        /// Rotavirus: rueda voladora. Flota girando a tu alrededor; luego acelera el giro, se echa para atrás
+        /// y se lanza en línea recta como sierra. Rebota en el piso, las paredes y tu escudo.
+        /// </summary>
+        private void ApproachWheel(PlayerController player, bool hasToken)
         {
             Vector2 me = Position;
-            float toPlayer = player.Position.x - me.x;
-            // Solo da la vuelta cuando ya se pasó bastante (inercia de rueda).
-            if (Mathf.Sign(toPlayer) != rollDirection && Mathf.Abs(toPlayer) > 2.5f) rollDirection = toPlayer > 0f ? 1 : -1;
+            Vector2 target = player.Position + Vector2.up * 0.8f;
+            int side = me.x >= target.x ? 1 : -1;
+            Face(-side);
 
-            if (Grounded && !GroundAhead(rollDirection) && !SafeDrop(rollDirection)) rollDirection = -rollDirection;
-            if (me.x <= WalkableArea.MinX + 0.7f) rollDirection = 1;   // bordes de la arena
-            else if (me.x >= WalkableArea.MaxX - 0.7f) rollDirection = -1;
-            if (motor.Velocity.x * rollDirection < 0.5f && Grounded && age > 0.5f && Mathf.Abs(motor.Velocity.x) < 0.2f
-                && Physics2D.Raycast(me + Vector2.up * 0.4f, new Vector2(rollDirection, 0f), 0.7f, groundMask).collider != null)
-                rollDirection = -rollDirection; // pared
+            float desired = hasToken ? data.attackDistance : Mathf.Max(data.attackDistance, waitDistance);
+            float orbit = age * 1.1f + bobPhase;
+            Vector2 goal = new Vector2(target.x + side * desired + Mathf.Sin(orbit) * 1.2f, target.y + data.flyHeight + Mathf.Cos(orbit * 1.3f) * 0.7f);
+            Move(Vector2.ClampMagnitude((goal - me) * 2.6f, data.moveSpeed));
 
-            Face(rollDirection);
-            Move(new Vector2(rollDirection * data.moveSpeed, 0f));
-            spin -= rollDirection * data.moveSpeed * 120f * Time.deltaTime;
+            spinSpeed = Mathf.MoveTowards(spinSpeed, 320f + Mathf.Abs(vel.x) * 70f, 900f * Time.deltaTime);
+            spin -= side * -spinSpeed * Time.deltaTime;
 
-            // Rebotes de llanta (y para subir a plataformas).
-            float dy = player.Position.y - me.y;
-            if (Grounded && jumpCooldown <= 0f)
+            bool inRange = Vector2.Distance(me, goal) < 1.6f;
+            if (hasToken && inRange && attackCooldown <= 0f) StartWindup(-side);
+        }
+
+        /// <summary>Movimiento de la rueda lanzada: avanza recto, rebota en el escenario y en los bordes.</summary>
+        private void UpdateWheelLaunch(PlayerController player, float dt)
+        {
+            spinSpeed = Mathf.MoveTowards(spinSpeed, 1500f, 3000f * dt);
+            spin -= Mathf.Sign(launchVelocity.x == 0f ? 1f : launchVelocity.x) * spinSpeed * dt;
+
+            Vector2 me = Position;
+            Vector2 step = launchVelocity * dt;
+            RaycastHit2D hit = Physics2D.Raycast(me, launchVelocity.normalized, step.magnitude + 0.45f, groundMask);
+            bool outLeft = me.x <= WalkableArea.MinX + 0.5f && launchVelocity.x < 0f;
+            bool outRight = me.x >= WalkableArea.MaxX - 0.5f && launchVelocity.x > 0f;
+            if (hit.collider != null && bounces < 2)
             {
-                bool climb = dy > 1.6f && Mathf.Abs(toPlayer) < 3f && dy <= data.jumpHeight + 0.5f;
-                motor.Jump(climb ? Mathf.Clamp(dy + 1f, 1.5f, data.jumpHeight + 0.6f) : 0.7f, 0.25f);
-                jumpCooldown = climb ? 1f : Random.Range(0.8f, 1.6f);
+                launchVelocity = Vector2.Reflect(launchVelocity, hit.normal) * 0.75f;
+                bounces++;
+                landSquash = 1f;
+            }
+            else if ((outLeft || outRight) && bounces < 2)
+            {
+                launchVelocity.x = -launchVelocity.x * 0.75f;
+                bounces++;
+            }
+            else if (hit.collider != null)
+            {
+                launchVelocity = Vector2.zero; // ya rebotó bastante: se queda
             }
 
-            ContactDamage(player, 0.5f);
+            transform.position += (Vector3)(launchVelocity * dt);
+            vel = launchVelocity;
+            if (!attackLanded) attackLanded = ContactDamage(player, 0.6f);
+
+            if (timer <= 0f || launchVelocity.sqrMagnitude < 1f)
+            {
+                vel = launchVelocity * 0.5f; // frena con inercia al regresar
+                EndAttack(0.7f);
+            }
         }
 
         /// <summary>Polen: lo lleva el aire en ondas, sin perseguirte de verdad; cerca de ti revienta.</summary>
@@ -512,7 +612,16 @@ namespace HealingKnight.Gameplay.Enemies
                 case EnemyBehavior.Drifter: shape = Vector2.one * (1f + k * 0.4f); break;                   // se hincha
             }
 
-            if (IsFlying && Behavior != EnemyBehavior.Drifter) Move(new Vector2(0f, 0f));
+            if (Behavior == EnemyBehavior.Roller)
+            {
+                // Se echa para atrás y acelera el giro (aviso claro antes de lanzarse).
+                Vector2 away = (Position - lockedTarget).normalized;
+                Move(away * 2.2f);
+                spinSpeed = Mathf.MoveTowards(spinSpeed, 1500f, 2400f * dt);
+                spin -= attackDirection * spinSpeed * dt;
+                shape = new Vector2(1f - k * 0.1f, 1f - k * 0.1f);
+            }
+            else if (IsFlying && Behavior != EnemyBehavior.Drifter) Move(Vector2.zero);
             else if (!IsFlying) Move(Vector2.zero);
 
             if (timer <= 0f) BeginAttack(player);
@@ -554,6 +663,13 @@ namespace HealingKnight.Gameplay.Enemies
                 case EnemyBehavior.Diver:
                     state = State.Attack;
                     timer = 1f;
+                    return;
+
+                case EnemyBehavior.Roller:
+                    launchVelocity = (lockedTarget - Position).normalized * 13f;
+                    bounces = 0;
+                    state = State.Attack;
+                    timer = 1.2f;
                     return;
 
                 case EnemyBehavior.Frenzy:
@@ -606,16 +722,24 @@ namespace HealingKnight.Gameplay.Enemies
                     return;
 
                 case EnemyBehavior.Latcher:
-                    Move(new Vector2(attackDirection * data.moveSpeed * 2.2f, 0f));
+                    Move(new Vector2(attackDirection * data.moveSpeed * 2.2f, 0f), true);
                     if (player != null && TryLatch(player)) return;
                     if (timer <= 0f && Grounded) EndAttack(0.6f);
+                    return;
+
+                case EnemyBehavior.Roller:
+                    UpdateWheelLaunch(player, dt);
                     return;
 
                 case EnemyBehavior.Diver:
                 {
                     // Picada en línea recta hacia donde estabas.
                     Vector2 to = lockedTarget - Position;
-                    if (to.magnitude > 0.3f) transform.position += (Vector3)(to.normalized * 11f * dt);
+                    if (to.magnitude > 0.3f)
+                    {
+                        vel = to.normalized * 11f;
+                        transform.position += (Vector3)(vel * dt);
+                    }
                     ContactDamage(player, 0.6f);
                     if (to.magnitude <= 0.3f || timer <= 0f) EndAttack(0.7f);
                     return;
@@ -624,7 +748,11 @@ namespace HealingKnight.Gameplay.Enemies
                 case EnemyBehavior.Frenzy:
                 {
                     Vector2 to = lockedTarget - Position;
-                    if (to.magnitude > 0.2f) transform.position += (Vector3)(to.normalized * 9f * dt);
+                    if (to.magnitude > 0.2f)
+                    {
+                        vel = to.normalized * 9f;
+                        transform.position += (Vector3)(vel * dt);
+                    }
                     if (!attackLanded) attackLanded = ContactDamage(player, 0.55f);
                     if (timer <= 0f)
                     {
@@ -644,7 +772,7 @@ namespace HealingKnight.Gameplay.Enemies
                 case EnemyBehavior.Charger:
                 {
                     bool blocked = Grounded && !GroundAhead(attackDirection);
-                    Move(blocked ? Vector2.zero : new Vector2(attackDirection * data.moveSpeed * 3.4f, 0f));
+                    Move(blocked ? Vector2.zero : new Vector2(attackDirection * data.moveSpeed * 3.4f, 0f), true);
                     shape = new Vector2(1.25f, 0.85f);
                     if (!attackLanded && player != null)
                         attackLanded = HitRect(player, Position + new Vector2(attackDirection * 0.4f, 0.5f), new Vector2(1.1f, 1f), data.attackDamage, data.attackKnockback);
@@ -676,7 +804,7 @@ namespace HealingKnight.Gameplay.Enemies
                 {
                     // Embestida corta (caminantes, racimo, oxiuro, tuberculosis cuerpo a cuerpo).
                     bool blocked = Grounded && !GroundAhead(attackDirection);
-                    Move(blocked ? Vector2.zero : new Vector2(attackDirection * data.moveSpeed * 3.5f, 0f));
+                    Move(blocked ? Vector2.zero : new Vector2(attackDirection * data.moveSpeed * 3.5f, 0f), true);
                     if (!attackLanded && player != null)
                     {
                         Vector2 size = Behavior == EnemyBehavior.Tank ? new Vector2(1.4f, 1.6f) : new Vector2(0.9f, 1.2f);
@@ -714,7 +842,12 @@ namespace HealingKnight.Gameplay.Enemies
         private void UpdateRecover(PlayerController player, float dt)
         {
             timer -= dt;
-            if (IsFlying && player != null && (Behavior == EnemyBehavior.Diver || Behavior == EnemyBehavior.Frenzy))
+            if (Behavior == EnemyBehavior.Roller)
+            {
+                spinSpeed = Mathf.MoveTowards(spinSpeed, 320f, 1200f * dt);
+                spin -= Mathf.Sign(vel.x == 0f ? 1f : vel.x) * spinSpeed * dt;
+            }
+            if (IsFlying && player != null && (Behavior == EnemyBehavior.Diver || Behavior == EnemyBehavior.Frenzy || Behavior == EnemyBehavior.Roller))
             {
                 // Regresa a su altura después de la picada.
                 Vector2 home = new Vector2(Position.x, player.Position.y + data.flyHeight);
@@ -727,7 +860,7 @@ namespace HealingKnight.Gameplay.Enemies
         private void EndAttack(float recover)
         {
             state = State.Recover;
-            timer = recover;
+            timer = recover * 0.7f;
             attackCooldown = data.attackCooldown;
             AttackTokens.Release(this);
         }
@@ -745,7 +878,11 @@ namespace HealingKnight.Gameplay.Enemies
             info.knockback = data.attackKnockback;
             HitResult r = box.Damageable.ApplyDamage(info);
             contactCooldown = 0.8f;
-            if (r.outcome == HitOutcome.Blocked && Behavior == EnemyBehavior.Roller) rollDirection = -rollDirection;
+            if (r.outcome == HitOutcome.Blocked && Behavior == EnemyBehavior.Roller)
+            {
+                launchVelocity = -launchVelocity * 0.6f + Vector2.up * 3f; // rebota en tu escudo
+                bounces++;
+            }
             return true;
         }
 

@@ -637,7 +637,7 @@ namespace HealingKnight.EditorTools
                 W(1.0f, E(prefabs.Giardia, data.Giardia, 2, SpawnSide.Both)));
             Platform(18f, 2.4f, 3.5f);
 
-            Arena("Arena_2_Rotavirus", 36f, 18f, "Rotavirus (rota = rueda): rueda sin parar y rebota. Sáltalo y dispárale. Antiviral.",
+            Arena("Arena_2_Rotavirus", 36f, 18f, "Rotavirus (rota = rueda): rueda voladora. Cuando gira más rápido y se echa para atrás, se va a lanzar: muévete o usa el escudo (rebota). Antiviral.",
                 W(0.6f, E(prefabs.Rotavirus, data.Rotavirus, 2)),
                 W(1.0f, E(prefabs.Rotavirus, data.Rotavirus, 1), E(prefabs.Giardia, data.Giardia, 2, SpawnSide.Left)));
             Platform(40f, 2.2f, 3f);

@@ -49,7 +49,7 @@ namespace HealingKnight.EditorTools
 
             HPylori = Enemy("Bacteria_HPylori", data.HPylori, EnemyShape.Capsule);
             Giardia = Enemy("Parasito_Giardia", data.Giardia, EnemyShape.Pear);
-            Rotavirus = Enemy("Virus_Rotavirus", data.Rotavirus, EnemyShape.Round);
+            Rotavirus = Enemy("Virus_Rotavirus", data.Rotavirus, EnemyShape.Wheel);
             Entamoeba = Enemy("Parasito_Entamoeba", data.Entamoeba, EnemyShape.Blob);
             CDifficile = Enemy("Bacteria_CDifficile", data.CDifficile, EnemyShape.Capsule);
             Oxiuro = Enemy("Parasito_Oxiuro", data.Oxiuro, EnemyShape.Long);
@@ -261,7 +261,7 @@ namespace HealingKnight.EditorTools
 
         // ---------- Enemigos ----------
 
-        private enum EnemyShape { Long, Capsule, Round, Blob, Pear, Cluster, Diplo, Pollen, Bullet, Egg }
+        private enum EnemyShape { Long, Capsule, Round, Blob, Pear, Cluster, Diplo, Pollen, Bullet, Egg, Wheel }
 
         private GameObject BuildEnemy(string name, EnemyData enemyData, EnemyShape shape)
         {
@@ -331,6 +331,33 @@ namespace HealingKnight.EditorTools
                             new Vector3((-0.4f + i * 0.2f) * s, 0.3f * s, 0f), new Vector2(0.12f * s, 0.12f * s), -1);
                     bodySize = new Vector2(1.2f * s, 0.6f * s);
                     break;
+                case EnemyShape.Wheel: // rotavirus: rueda con aro, rayos y bordes dentados (así se ve al microscopio)
+                {
+                    Color dark = Color.Lerp(enemyData.tint, Color.black, 0.35f);
+                    Color light = Color.Lerp(enemyData.tint, Color.white, 0.35f);
+                    bodySprite = SetupUtils.SpriteChild(visual.transform, "Body", PlaceholderArt.Circle, enemyData.tint,
+                        Vector3.zero, new Vector2(1.0f * s, 1.0f * s), 0);
+                    SetupUtils.SpriteChild(visual.transform, "Inner", PlaceholderArt.Circle, dark,
+                        Vector3.zero, new Vector2(0.66f * s, 0.66f * s), 1);
+                    for (int i = 0; i < 6; i++)
+                    {
+                        float a = i * 60f;
+                        float r = a * Mathf.Deg2Rad;
+                        SpriteRenderer spoke = SetupUtils.SpriteChild(visual.transform, "Spoke" + i, PlaceholderArt.Capsule, light,
+                            new Vector3(Mathf.Cos(r) * 0.17f * s, Mathf.Sin(r) * 0.17f * s, 0f), new Vector2(0.34f * s, 0.07f * s), 2);
+                        spoke.transform.localRotation = Quaternion.Euler(0f, 0f, a);
+                    }
+                    SetupUtils.SpriteChild(visual.transform, "Hub", PlaceholderArt.Circle, light,
+                        Vector3.zero, new Vector2(0.2f * s, 0.2f * s), 3);
+                    for (int i = 0; i < 14; i++)
+                    {
+                        float r = i * (360f / 14f) * Mathf.Deg2Rad;
+                        SetupUtils.SpriteChild(visual.transform, "Tooth" + i, PlaceholderArt.Circle, dark,
+                            new Vector3(Mathf.Cos(r) * 0.52f * s, Mathf.Sin(r) * 0.52f * s, 0f), new Vector2(0.13f * s, 0.13f * s), -1);
+                    }
+                    bodySize = new Vector2(1.0f * s, 1.0f * s);
+                    break;
+                }
                 case EnemyShape.Egg: // huevo de oxiuro: ovalado, aplanado de un lado, con la larva adentro
                     bodySprite = SetupUtils.SpriteChild(visual.transform, "Body", PlaceholderArt.CircleBottom, enemyData.tint,
                         Vector3.zero, new Vector2(0.75f * s * 2f, 1.1f * s * 2f), 0);
@@ -365,7 +392,8 @@ namespace HealingKnight.EditorTools
 
             // Ojo para saber hacia dónde mira.
             Vector3 eyeOffset = shape == EnemyShape.Capsule ? new Vector3(0.12f * s, 0.85f * s, 0f) : bodySprite.transform.localPosition + new Vector3(0.3f * s, 0.25f * s, 0f);
-            SetupUtils.SpriteChild(visual.transform, "Eye", PlaceholderArt.Circle, Color.black, eyeOffset, new Vector2(0.14f * s, 0.14f * s), 1);
+            if (shape != EnemyShape.Wheel) // la rueda gira: sin ojo
+                SetupUtils.SpriteChild(visual.transform, "Eye", PlaceholderArt.Circle, Color.black, eyeOffset, new Vector2(0.14f * s, 0.14f * s), 1);
 
             if (!flying) AddMotor(root, visual.transform, new Vector2(Mathf.Min(bodySize.x, 0.9f), bodySize.y));
 

@@ -49,13 +49,13 @@ Los controles se definen en `Scripts/Gameplay/Player/PlayerInputReader.cs`.
 
 ## Enemigos: comportamiento y biología
 
-Cada enemigo tiene un comportamiento (`behavior` en su EnemyData) basado en su microorganismo, y puede tener **debilidades propias** (`weaknesses`) que ganan sobre la tabla general. Los de suelo bajan de las plataformas si estás abajo y saltan para subir si estás arriba; si no te alcanzan, patrullan. En el Sandbox, la arena "Arena_Enemigos" trae una oleada por comportamiento para probarlos.
+Cada enemigo tiene un comportamiento (`behavior` en su EnemyData) basado en su microorganismo, y puede tener **debilidades propias** (`weaknesses`) que ganan sobre la tabla general. Los de suelo bajan de las plataformas si estás abajo y saltan para subir si estás arriba; si no te alcanzan, patrullan. Todos se mueven con inercia (aceleran y frenan), rebotan al caminar, se estiran al saltar, se aplastan al caer y los voladores se inclinan hacia donde van. En el Sandbox, la arena "Arena_Enemigos" trae una oleada por comportamiento para probarlos.
 
 | Enemigo | Cómo pelea | Por qué (biología) | Debilidad |
 |---|---|---|---|
 | H. pylori | Se entierra (inmune), avanza escondido y sale debajo de ti | Se entierra en el moco del estómago para que el ácido no la mate | Antibiótico |
 | Giardia | Salta y se te pega: te frena y te daña; un disparo la despega | Disco ventral con el que se pega al intestino | Antiparasitario **y** Antibiótico (metronidazol es las dos cosas) |
-| Rotavirus | Rueda sin parar, se pasa de largo y rebota | "Rota" = rueda: así se ve al microscopio | Antiviral |
+| Rotavirus | Rueda voladora: gira a tu alrededor, acelera el giro, se echa para atrás y se lanza como sierra; rebota en piso, paredes y escudo | "Rota" = rueda: así se ve al microscopio | Antiviral |
 | Entamoeba | Seudópodo largo que te jala | Fagocitosis: engulle células | Antiparasitario |
 | C. difficile | Herida se vuelve espora (todo rebota) y despierta | Sus esporas resisten antibióticos y calor | Solo Antibiótico |
 | Oxiuro | Rápido, culebrea; al morir deja un huevo que eclosiona | Autoinfección con sus huevos | Antiparasitario |
